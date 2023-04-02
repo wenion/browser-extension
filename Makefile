@@ -75,7 +75,7 @@ build/client/notebook.html: build/client/app.html
 build/client/profile.html: build/client/app.html
 	cp $< $@
 build/client/kmass.html: build/client/build/kmass.html
-	mv $< $@
+	cp $< $@
 build/unload-client.js: src/unload-client.js
 	cp $< $@
 build/pdfjs-%.js: src/pdfjs-%.js
