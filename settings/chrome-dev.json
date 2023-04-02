@@ -1,10 +1,12 @@
 {
   "buildType": "dev",
 
-  "apiUrl": "http://localhost:5000/api/",
+  "apiUrl": "https://colam.kmass.cloud.edu.au/api/",
   "authDomain": "localhost",
-  "bouncerUrl": "http://localhost:8000/",
-  "serviceUrl": "http://localhost:5000/",
+  "bouncerUrl": "https://colam.kmass.cloud.edu.au/",
+  "serviceUrl": "https://colam.kmass.cloud.edu.au/",
+
+  "oauthClientId": "49caf49a-d14b-11ed-a886-d7b271cd6a30",
 
   "browserIsChrome": true,
   "appType": "chrome-extension"
