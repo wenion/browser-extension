@@ -53,7 +53,7 @@ extension: build/client/build
 extension: build/client/app.html
 extension: build/client/notebook.html
 extension: build/client/profile.html
-extension: build/client/kmass.html
+extension: build/client/home.html
 extension: build/unload-client.js
 extension: build/pdfjs-init.js
 extension: $(addprefix build/,$(EXTENSION_SRC))
@@ -74,7 +74,7 @@ build/client/notebook.html: build/client/app.html
 	cp $< $@
 build/client/profile.html: build/client/app.html
 	cp $< $@
-build/client/kmass.html: build/client/build/kmass.html
+build/client/home.html: build/client/build/home.html
 	cp $< $@
 build/unload-client.js: src/unload-client.js
 	cp $< $@
