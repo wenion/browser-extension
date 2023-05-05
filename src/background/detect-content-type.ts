@@ -1,20 +1,27 @@
+export type PDFContentType = { type: 'PDF' };
+
+export type HTMLContentType = { type: 'HTML' };
+
+/** Details of the detected content type. */
+export type ContentTypeInfo = PDFContentType | HTMLContentType;
+
 /**
- * Returns the type of content in the current document,
- * currently either 'PDF' or 'HTML'.
+ * Detect the type of content in the current document.
  *
- * This function is injected as a content script into tabs in
- * order to detect the type of content on the page (PDF, HTML) etc.
- * by sniffing for viewer plugins.
+ * This function is injected as a content script into tabs in order to detect
+ * the type of content on the page (PDF, HTML) etc.  by sniffing for viewer
+ * plugins.
  *
- * In future this could also be extended to support extraction of the URLs
- * of content in embedded viewers where that differs from the tab's
- * main URL.
+ * In future this could also be extended to support extraction of the URLs of
+ * content in embedded viewers where that differs from the tab's main URL.
  *
- * @param {Document} document_ - Test seam
+ * @param document_ - Document to query
  */
 /* istanbul ignore next */
-export function detectContentType(document_ = document) {
-  function detectChromePDFViewer() {
+export function detectContentType(
+  document_ = document
+): ContentTypeInfo | null {
+  function detectChromePDFViewer(): PDFContentType | null {
     // When viewing a PDF in Chrome, the viewer consists of a top-level
     // document with an <embed> tag, which in turn instantiates an inner HTML
     // document providing the PDF viewer UI plus another <embed> tag which
@@ -30,7 +37,7 @@ export function detectContentType(document_ = document) {
     return null;
   }
 
-  function detectFirefoxPDFViewer() {
+  function detectFirefoxPDFViewer(): PDFContentType | null {
     // The Firefox PDF viewer is an instance of PDF.js.
     //
     // The Firefox PDF plugin specifically can be detected via the <base>

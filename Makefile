@@ -58,7 +58,7 @@ extension: build/unload-client.js
 extension: build/pdfjs-init.js
 extension: $(addprefix build/,$(EXTENSION_SRC))
 
-build/extension.bundle.js: src/background/*.js rollup.config.mjs build/settings.json
+build/extension.bundle.js: src/background/*.ts rollup.config.mjs build/settings.json
 	$(ROLLUP) -c rollup.config.mjs
 build/manifest.json: src/manifest.json.mustache build/settings.json
 	$(MUSTACHE) build/settings.json $< > $@
@@ -96,11 +96,11 @@ lint: node_modules/.uptodate build/settings.json
 
 .PHONY: checkformatting
 checkformatting: node_modules/.uptodate
-	$(PRETTIER) --check '**/*.js'
+	$(PRETTIER) --check '**/*.{ts,js}'
 
 .PHONY: format
 format: node_modules/.uptodate
-	$(PRETTIER) --list-different --write '**/*.js'
+	$(PRETTIER) --list-different --write '**/*.{ts,js}'
 
 .PHONY: test
 test: node_modules/.uptodate

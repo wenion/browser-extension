@@ -4,10 +4,15 @@ import json from '@rollup/plugin-json';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 
 export default {
-  input: 'src/background/index.js',
+  input: 'src/background/index.ts',
   output: {
     file: 'build/extension.bundle.js',
     format: 'iife',
+
+    // Global variable used for entry point exports. This is not actually used,
+    // but it suppresses a warning from Rollup about accessing exports of an
+    // IIFE bundle.
+    name: 'hypothesis',
   },
   plugins: [
     babel({
