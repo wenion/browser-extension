@@ -44,7 +44,7 @@ const vitalSourceFrames = {
   },
 };
 
-describe('SidebarInjector', function () {
+describe('SidebarInjector', () => {
   let injector;
   let fakeChromeAPI;
 
@@ -65,16 +65,20 @@ describe('SidebarInjector', function () {
   // Mock return value from embed.js when injected into page
   let embedScriptReturnValue;
 
+  // Mock return value when testing whether the client is active in a page
+  let isClientActiveReturnValue;
+
   // Set of optional permissions that the extension currently has
   let permissions;
 
-  beforeEach(function () {
+  beforeEach(() => {
     contentType = 'HTML';
     isAlreadyInjected = false;
     contentFrame = undefined;
     embedScriptReturnValue = {
       installedURL: EXTENSION_BASE_URL + '/client/app.html',
     };
+    isClientActiveReturnValue = false;
 
     // Simulate running a self-contained function in the tab.
     fakeExecuteFunction = sinon.spy(async ({ func, args }) => {
@@ -86,6 +90,8 @@ describe('SidebarInjector', function () {
       }
       if (func.name.match(/detectContentType/)) {
         return { type: contentType };
+      } else if (func.name.match(/isClientActive/)) {
+        return isClientActiveReturnValue;
       } else {
         return null;
       }
@@ -113,6 +119,10 @@ describe('SidebarInjector', function () {
 
       runtime: {
         getURL: sinon.spy(path => EXTENSION_BASE_URL + path),
+        onMessage: {
+          addListener: sinon.stub(),
+          removeListener: sinon.stub(),
+        },
       },
 
       permissions: {
@@ -151,13 +161,14 @@ describe('SidebarInjector', function () {
         chromeAPI: fakeChromeAPI,
         executeFunction: fakeExecuteFunction,
         executeScript: fakeExecuteScript,
+        getExtensionId: () => 'hypothesisId',
       },
     });
 
     injector = new SidebarInjector();
   });
 
-  afterEach(function () {
+  afterEach(() => {
     if (contentFrame) {
       contentFrame.parentNode.removeChild(contentFrame);
     }
@@ -165,26 +176,68 @@ describe('SidebarInjector', function () {
     $imports.$restore();
   });
 
-  describe('.injectIntoTab', function () {
+  describe('#isClientActiveInTab', () => {
+    [true, false].forEach(actuallyActive => {
+      it('returns true if client is active in tab', async () => {
+        isClientActiveReturnValue = actuallyActive;
+        const active = await injector.isClientActiveInTab({
+          id: 1,
+          url: 'https://example.com',
+        });
+        assert.equal(fakeExecuteFunction.args[0][0].tabId, 1);
+        assert.deepEqual(fakeExecuteFunction.args[0][0].args, [
+          'chrome-extension://hypothesis/',
+        ]);
+        assert.equal(active, actuallyActive);
+      });
+    });
+  });
+
+  describe('#requestExtraPermissionsForTab', () => {
+    it('returns true for non-VitalSource URLs', async () => {
+      const granted = await injector.requestExtraPermissionsForTab({
+        id: 1,
+        url: 'https://example.com',
+      });
+      assert.isTrue(granted);
+    });
+
+    it('returns true for VitalSource URLs if user grants permission', async () => {
+      const granted = await injector.requestExtraPermissionsForTab({
+        id: 1,
+        url: 'https://bookshelf.vitalsource.com/reader/books/9780132119177',
+      });
+      assert.calledWith(fakeChromeAPI.permissions.request, {
+        permissions: ['webNavigation'],
+      });
+      assert.isTrue(granted);
+    });
+
+    it('returns false for VitalSource URLs if user rejects permission', async () => {
+      fakeChromeAPI.permissions.request.resolves(false);
+      const granted = await injector.requestExtraPermissionsForTab({
+        id: 1,
+        url: 'https://bookshelf.vitalsource.com/reader/books/9780132119177',
+      });
+      assert.isFalse(granted);
+    });
+  });
+
+  describe('.injectIntoTab', () => {
     const urls = [
       'chrome://version',
       'chrome-devtools://host',
       'chrome-extension://1234/foo.html',
       'chrome-extension://1234/foo.pdf',
     ];
-    urls.forEach(function (url) {
-      it(
-        'bails early when trying to load an unsupported url: ' + url,
-        function () {
-          return toResult(injector.injectIntoTab({ id: 1, url: url })).then(
-            function (result) {
-              assert.ok(result.error);
-              assert.instanceOf(result.error, errors.RestrictedProtocolError);
-              assert.notCalled(fakeExecuteScript);
-            }
-          );
-        }
-      );
+    urls.forEach(url => {
+      it('bails early when trying to load an unsupported url: ' + url, () => {
+        return toResult(injector.injectIntoTab({ id: 1, url })).then(result => {
+          assert.ok(result.error);
+          assert.instanceOf(result.error, errors.RestrictedProtocolError);
+          assert.notCalled(fakeExecuteScript);
+        });
+      });
     });
 
     [{ id: 1 }, { url: 'https://foobar.com' }].forEach(tab => {
@@ -200,84 +253,115 @@ describe('SidebarInjector', function () {
       });
     });
 
-    it('succeeds if the tab is already displaying the embedded PDF viewer', function () {
+    it('succeeds if the tab is already displaying the embedded PDF viewer', () => {
       const url =
         PDF_VIEWER_BASE_URL + encodeURIComponent('http://origin/foo.pdf');
-      return injector.injectIntoTab({ id: 1, url: url });
+      return injector.injectIntoTab({ id: 1, url });
     });
 
-    describe('when viewing a remote PDF', function () {
+    describe('when viewing a remote PDF', () => {
       const url = 'http://example.com/foo.pdf';
 
-      it('injects hypothesis into the page', function () {
+      beforeEach(() => {
         contentType = 'PDF';
+      });
+
+      it('navigates page to Hypothesis PDF viewer', async () => {
         const spy = fakeChromeAPI.tabs.update.resolves({ tab: 1 });
-        return injector.injectIntoTab({ id: 1, url: url }).then(function () {
-          assert.calledWith(spy, 1, {
-            url: PDF_VIEWER_BASE_URL + encodeURIComponent(url),
-          });
+
+        await injector.injectIntoTab({ id: 1, url });
+
+        assert.calledWith(spy, 1, {
+          url: PDF_VIEWER_BASE_URL + encodeURIComponent(url),
         });
       });
 
-      it('preserves #annotations fragments in the URL', function () {
-        contentType = 'PDF';
+      it('responds to Hypothesis client config request', async () => {
+        const clientConfig = {
+          assetRoot: 'chrome-extension://abc/',
+          annotations: 'abc123',
+        };
+
+        await injector.injectIntoTab({ id: 1, url }, clientConfig);
+
+        const onMessage = fakeChromeAPI.runtime.onMessage;
+        assert.calledOnce(onMessage.addListener);
+
+        // Simulate request for client config from `pdfjs-init.js`.
+        const onMessageCallback = onMessage.addListener.args[0][0];
+        const sender = { tab: { id: 1 } };
+        const sendResponse = sinon.stub();
+        onMessageCallback({ type: 'getConfigForTab' }, sender, sendResponse);
+
+        // Verify config was sent to tab and listener was removed.
+        assert.calledWith(sendResponse, clientConfig);
+        assert.calledWith(onMessage.removeListener, onMessageCallback);
+      });
+
+      it('preserves fragments in the URL', async () => {
         const spy = fakeChromeAPI.tabs.update.resolves({ tab: 1 });
-        const hash = '#annotations:456';
-        return injector
-          .injectIntoTab({ id: 1, url: url + hash })
-          .then(function () {
-            assert.calledWith(spy, 1, {
-              url: PDF_VIEWER_BASE_URL + encodeURIComponent(url) + hash,
-            });
-          });
+        const hash = '#foobar';
+
+        await injector.injectIntoTab({ id: 1, url: url + hash });
+
+        assert.calledWith(spy, 1, {
+          url: PDF_VIEWER_BASE_URL + encodeURIComponent(url) + hash,
+        });
       });
     });
 
-    describe('when viewing a remote HTML page', function () {
-      it('injects hypothesis into the page', function () {
+    describe('when viewing a remote HTML page', () => {
+      it('injects hypothesis into the page', () => {
         const url = 'http://example.com/foo.html';
 
-        return injector.injectIntoTab({ id: 1, url: url }).then(function () {
-          assert.calledWith(fakeExecuteScript, {
-            tabId: 1,
-            file: sinon.match('/client/build/boot.js'),
-          });
+        return injector.injectIntoTab({ id: 1, url }).then(() => {
+          assert.calledWith(
+            fakeExecuteScript,
+            sinon.match({
+              tabId: 1,
+              file: sinon.match('/client/build/boot.js'),
+            })
+          );
         });
       });
 
-      it('reports an error if Hypothesis is already embedded', function () {
+      it('reports an error if Hypothesis is already embedded', () => {
         embedScriptReturnValue = {
           installedURL: 'https://hypothes.is/app.html',
         };
         const url = 'http://example.com';
-        return toResult(injector.injectIntoTab({ id: 1, url: url })).then(
-          function (result) {
-            assert.ok(result.error);
-            assert.instanceOf(result.error, errors.AlreadyInjectedError);
-          }
-        );
+        return toResult(injector.injectIntoTab({ id: 1, url })).then(result => {
+          assert.ok(result.error);
+          assert.instanceOf(result.error, errors.AlreadyInjectedError);
+        });
       });
 
-      it('injects config options into the page', function () {
+      it('injects config options into the page', async () => {
         contentFrame = createTestFrame();
         const url = 'http://example.com';
-        return injector
-          .injectIntoTab({ id: 1, url: url }, { annotations: '456' })
-          .then(function () {
-            const configEl = contentFrame.contentDocument.querySelector(
-              'script.js-hypothesis-config'
-            );
-            assert.ok(configEl);
-            assert.deepEqual(JSON.parse(configEl.textContent), {
-              annotations: '456',
-            });
-          });
+
+        await injector.injectIntoTab({ id: 1, url }, { annotations: '456' });
+
+        const configEl = contentFrame.contentDocument.querySelector(
+          'script.js-hypothesis-config'
+        );
+        assert.ok(configEl);
+        assert.deepEqual(JSON.parse(configEl.textContent), {
+          annotations: '456',
+        });
       });
     });
 
     describe('when viewing a VitalSource book', () => {
       const injectClient = () =>
         injector.injectIntoTab({ id: 1, url: vitalSourceFrames.main.url });
+
+      beforeEach(() => {
+        // Simulate user granting "webNavigation" permission in an earlier call
+        // to `requestExtraPermissionsForTab`, which must be called before
+        // `injectIntoTab`.
+        permissions.add('webNavigation');
+      });
 
       it('injects client into book viewer frame', async () => {
         await injectClient();
@@ -288,6 +372,7 @@ describe('SidebarInjector', function () {
             tabId: 1,
             frameId: vitalSourceFrames.reader.frameId,
             func: { name: 'setClientConfig' },
+            args: [sinon.match.any, 'hypothesisId'],
           })
         );
 
@@ -298,21 +383,8 @@ describe('SidebarInjector', function () {
         });
       });
 
-      it('requests "webNavigation" permission if not present', async () => {
-        await injectClient();
-        assert.calledWith(fakeChromeAPI.permissions.request, {
-          permissions: ['webNavigation'],
-        });
-      });
-
-      it('does not request "webNavigation" permission if already granted', async () => {
-        permissions.add('webNavigation');
-        await injectClient();
-        assert.notCalled(fakeChromeAPI.permissions.request);
-      });
-
-      it('rejects if "webNavigation" permission is denied', async () => {
-        fakeChromeAPI.permissions.request.resolves(false);
+      it('rejects if extension does not have "webNavigation" permission', async () => {
+        permissions.delete('webNavigation');
 
         let error;
         try {
@@ -375,44 +447,44 @@ describe('SidebarInjector', function () {
       });
     });
 
-    describe('when viewing a local PDF', function () {
-      describe('when file access is enabled', function () {
-        it('loads the PDFjs viewer', function () {
+    describe('when viewing a local PDF', () => {
+      describe('when file access is enabled', () => {
+        it('loads the PDFjs viewer', async () => {
           const spy = fakeChromeAPI.tabs.update.resolves([]);
           const url = 'file:///foo.pdf';
           contentType = 'PDF';
 
-          return injector.injectIntoTab({ id: 1, url: url }).then(function () {
-            assert.called(spy);
-            assert.calledWith(spy, 1, {
-              url: PDF_VIEWER_BASE_URL + encodeURIComponent('file:///foo.pdf'),
-            });
+          await injector.injectIntoTab({ id: 1, url });
+
+          assert.called(spy);
+          assert.calledWith(spy, 1, {
+            url: PDF_VIEWER_BASE_URL + encodeURIComponent('file:///foo.pdf'),
           });
         });
       });
 
-      describe('when file access is disabled', function () {
-        beforeEach(function () {
+      describe('when file access is disabled', () => {
+        beforeEach(() => {
           fakeChromeAPI.extension.isAllowedFileSchemeAccess.resolves(false);
           contentType = 'PDF';
         });
 
-        it('returns an error', function () {
+        it('returns an error', () => {
           const url = 'file://foo.pdf';
 
-          const promise = injector.injectIntoTab({ id: 1, url: url });
-          return toResult(promise).then(function (result) {
+          const promise = injector.injectIntoTab({ id: 1, url });
+          return toResult(promise).then(result => {
             assert.instanceOf(result.error, errors.NoFileAccessError);
             assert.notCalled(fakeExecuteScript);
           });
         });
       });
 
-      describe('when viewing a local HTML file', function () {
-        it('returns an error', function () {
+      describe('when viewing a local HTML file', () => {
+        it('returns an error', () => {
           const url = 'file://foo.html';
-          const promise = injector.injectIntoTab({ id: 1, url: url });
-          return toResult(promise).then(function (result) {
+          const promise = injector.injectIntoTab({ id: 1, url });
+          return toResult(promise).then(result => {
             assert.instanceOf(result.error, errors.LocalFileError);
           });
         });
@@ -420,72 +492,76 @@ describe('SidebarInjector', function () {
     });
   });
 
-  describe('.removeFromTab', function () {
-    it('bails early when trying to unload a chrome url', function () {
+  describe('#removeFromTab', () => {
+    it('bails early when trying to unload a chrome url', async () => {
       const url = 'chrome://extensions/';
-
-      return injector.removeFromTab({ id: 1, url: url }).then(function () {
-        assert.notCalled(fakeExecuteScript);
-      });
+      await injector.removeFromTab({ id: 1, url });
+      assert.notCalled(fakeExecuteScript);
     });
 
     const protocols = ['chrome:', 'chrome-devtools:', 'chrome-extension:'];
-    protocols.forEach(function (protocol) {
+    protocols.forEach(protocol => {
       it(
         'bails early when trying to unload an unsupported ' + protocol + ' url',
-        function () {
+        async () => {
           const url = protocol + '//foobar/';
-
-          return injector.removeFromTab({ id: 1, url: url }).then(function () {
-            assert.notCalled(fakeExecuteScript);
-          });
+          await injector.removeFromTab({ id: 1, url });
+          assert.notCalled(fakeExecuteScript);
         }
       );
     });
 
-    describe('when viewing a PDF', function () {
-      it('reverts the tab back to the original document', function () {
+    describe('when viewing a PDF', () => {
+      it('reverts the tab back to the original document', async () => {
         const spy = fakeChromeAPI.tabs.update.resolves([]);
         const url =
           PDF_VIEWER_BASE_URL +
           encodeURIComponent('http://example.com/foo.pdf') +
           '#foo';
-        return injector.removeFromTab({ id: 1, url: url }).then(function () {
-          assert.calledWith(spy, 1, {
-            url: 'http://example.com/foo.pdf#foo',
-          });
+
+        await injector.removeFromTab({ id: 1, url });
+
+        assert.calledWith(spy, 1, {
+          url: 'http://example.com/foo.pdf#foo',
         });
       });
 
-      it('drops #annotations fragments', function () {
+      it('drops #annotations fragments', async () => {
         const spy = fakeChromeAPI.tabs.update.resolves([]);
         const url =
           PDF_VIEWER_BASE_URL +
           encodeURIComponent('http://example.com/foo.pdf') +
           '#annotations:456';
-        return injector.removeFromTab({ id: 1, url: url }).then(function () {
-          assert.calledWith(spy, 1, {
-            url: 'http://example.com/foo.pdf',
-          });
+
+        await injector.removeFromTab({ id: 1, url });
+
+        assert.calledWith(spy, 1, {
+          url: 'http://example.com/foo.pdf',
         });
       });
     });
 
-    describe('when viewing an HTML page', function () {
-      it('injects a destroy script into the page', function () {
+    describe('when viewing an HTML page', () => {
+      it('injects a destroy script into the page', async () => {
         isAlreadyInjected = true;
-        return injector
-          .removeFromTab({ id: 1, url: 'http://example.com/foo.html' })
-          .then(function () {
-            assert.calledWith(fakeExecuteScript, {
-              tabId: 1,
-              file: sinon.match('/unload-client.js'),
-            });
-          });
+
+        await injector.removeFromTab({
+          id: 1,
+          url: 'http://example.com/foo.html',
+        });
+
+        assert.calledWith(fakeExecuteScript, {
+          tabId: 1,
+          file: sinon.match('/unload-client.js'),
+        });
       });
     });
 
     describe('when viewing a VitalSource book', () => {
+      beforeEach(() => {
+        permissions.add('webNavigation');
+      });
+
       const removeClient = () =>
         injector.removeFromTab({ id: 1, url: vitalSourceFrames.main.url });
 
@@ -507,8 +583,8 @@ describe('SidebarInjector', function () {
         assert.notCalled(fakeExecuteScript);
       });
 
-      it('rejects if permission to list frames was denied', async () => {
-        fakeChromeAPI.permissions.request.resolves(false);
+      it('rejects if extension does not have "webNavigation" permission', async () => {
+        permissions.delete('webNavigation');
 
         let error;
         try {
