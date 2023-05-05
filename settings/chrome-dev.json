@@ -7,12 +7,13 @@
 
   "apiUrl": "http://localhost:5000/api/",
   "authDomain": "localhost",
-  "bouncerUrl": "http://localhost:8000/",
+  "bouncerUrl": "http://localhost:5000/",
   "serviceUrl": "http://localhost:5000/",
 
   "oauthClientId_nectar": "49caf49a-d14b-11ed-a886-d7b271cd6a30",
-  "oauthClientId": "12df6a38-dbe6-11ed-bd4c-6b670173b296",
+  "oauthClientId_localhost": "12df6a38-dbe6-11ed-bd4c-6b670173b296",
   "oauthClientId_lambda": "4453fc00-d8f3-11ed-b083-fba26ce801cf",
+  "oauthClientId": "12df6a38-dbe6-11ed-bd4c-6b670173b296",
 
   "browserIsChrome": true,
   "appType": "chrome-extension"
