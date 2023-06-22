@@ -1,6 +1,6 @@
 {
   "name": "KMASS - COLAM",
-  "short_name": "kmass",
+  "short_name": "KMASS",
   "version": "{{ version }}",
   {{#browserIsChrome}}
   "version_name": "{{ version }} ({{ versionName }})",
@@ -36,7 +36,7 @@
     "128": "images/kmass-icon128.png"
   },
 
-  "homepage_url": "https://hypothes.is/",
+  "homepage_url": "https://colam.kmass.cloud.edu.au/",
 
   {{! Firefox does not support the "split" mode.
       See https://developer.mozilla.org/en-US/Add-ons/WebExtensions/manifest.json/incognito
@@ -56,6 +56,7 @@
   "permissions": [
     {{#manifestV3}}
     "scripting",
+    "webRequest",
     {{/manifestV3}}
 
     {{^manifestV3}}

@@ -52,15 +52,15 @@ export class BrowserAction {
     switch (state.state) {
       case 'active':
         activeIcon = icons.active;
-        title = 'Hypothesis is active';
+        title = 'KMASS is active';
         break;
       case 'inactive':
         activeIcon = icons.inactive;
-        title = 'Hypothesis is inactive';
+        title = 'KMASS is inactive';
         break;
       case 'errored':
         activeIcon = icons.inactive;
-        title = 'Hypothesis failed to load';
+        title = 'KMASS failed to load';
         badgeText = '!';
         break;
     }

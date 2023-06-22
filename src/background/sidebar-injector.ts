@@ -12,11 +12,13 @@ import {
   NoFileAccessError,
   RestrictedProtocolError,
 } from './errors';
+import settings from './settings';
 
 const CONTENT_TYPE_HTML = 'HTML';
 const CONTENT_TYPE_PDF = 'PDF';
 const CONTENT_TYPE_VITALSOURCE = 'VITALSOURCE';
 const CONTENT_TYPE_LMS = 'LMS';
+const CONTENT_TYPE_VIDEO = 'VIDEO';
 
 /* istanbul ignore next - Code coverage breaks `eval`-ing of this function in tests. */
 function setClientConfig(config: object, extensionId: string) {
@@ -92,6 +94,10 @@ export class SidebarInjector {
         return true;
       }
 
+      if (isVideoViewerURL(tab_.url)) {
+        return true;
+      }
+
       // In the VitalSource book reader, we need to test a specific frame.
       let frameId;
       if (isVitalSourceURL(tab_.url)) {
@@ -154,6 +160,9 @@ export class SidebarInjector {
       } else if (isVitalSourceURL(tab_.url)) {
         return removeFromVitalSource(tab_);
       } else {
+        if (isVideoViewerURL(tab_.url)) {
+          removeFromVideo(tab_);
+        }
         return removeFromHTML(tab_);
       }
     };
@@ -190,6 +199,22 @@ export class SidebarInjector {
       parsedURL.hash = '';
       const encodedURL = encodeURIComponent(parsedURL.href);
       return `${pdfViewerBaseURL}?file=${encodedURL}${hash}`;
+    }
+
+    function updateVideoViewerURL(tab: Tab, config: object) {
+      if (isVideoViewerURL(tab.url)) {
+        return;
+      }
+      if (tab.url.endsWith(".mp4")) {
+        const parsedURL = new URL(tab.url);
+        const hash = parsedURL.hash;
+        parsedURL.hash = '';
+        const encodedURL = encodeURIComponent(parsedURL.href);
+
+        const baseURL = new URL(settings.apiUrl)
+        const redirectedURL = `${baseURL.protocol}//${baseURL.hostname}/video?file=${encodedURL}${hash}`;
+        chromeAPI.tabs.update(tab.id, { url: redirectedURL });
+      }
     }
 
     /**
@@ -274,6 +299,11 @@ export class SidebarInjector {
 
     function isFileURL(url: string) {
       return url.startsWith('file:');
+    }
+
+    function isVideoViewerURL(url: string) {
+      const baseURL = new URL(settings.apiUrl)
+      return url.startsWith(`${baseURL.protocol}//${baseURL.hostname}/video`);
     }
 
     function isSupportedURL(url: string) {
@@ -371,11 +401,32 @@ export class SidebarInjector {
     }
 
     async function injectIntoHTML(tab: Tab, config: object) {
+      updateVideoViewerURL(tab, config);
       await injectConfig(tab.id, config);
       return executeClientBootScript(tab.id);
     }
 
     async function removeFromPDF(tab: Tab) {
+      const parsedURL = new URL(tab.url);
+      const originalURL = parsedURL.searchParams.get('file');
+      if (!originalURL) {
+        throw new Error(`Failed to extract original URL from ${tab.url}`);
+      }
+      let hash = parsedURL.hash;
+
+      // If the original URL was a direct link, drop the #annotations fragment
+      // as otherwise the Chrome extension will re-activate itself on this tab
+      // when the original URL loads.
+      if (hash.startsWith('#annotations:')) {
+        hash = '';
+      }
+
+      await chromeAPI.tabs.update(tab.id, {
+        url: decodeURIComponent(originalURL) + hash,
+      });
+    }
+
+    async function removeFromVideo(tab: Tab) {
       const parsedURL = new URL(tab.url);
       const originalURL = parsedURL.searchParams.get('file');
       if (!originalURL) {
