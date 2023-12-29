@@ -53,7 +53,6 @@ extension: build/client/build
 extension: build/client/app.html
 extension: build/client/notebook.html
 extension: build/client/profile.html
-extension: build/client/index.html
 extension: build/unload-client.js
 extension: build/pdfjs-init.js
 extension: $(addprefix build/,$(EXTENSION_SRC))
@@ -73,8 +72,6 @@ build/client/app.html: src/sidebar-app.html.mustache build/client build/settings
 build/client/notebook.html: build/client/app.html
 	cp $< $@
 build/client/profile.html: build/client/app.html
-	cp $< $@
-build/client/index.html: build/client/build/index.html
 	cp $< $@
 build/unload-client.js: src/unload-client.js
 	cp $< $@
