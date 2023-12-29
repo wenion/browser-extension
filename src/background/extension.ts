@@ -292,6 +292,12 @@ export class Extension {
 
         this.activate(tabId, pendingActivation);
       }
+
+      chrome.storage.sync.get('alwaysOn', (response) => {
+        if (response.alwaysOn && status === 'complete' && !state.isTabActive(tabId)) {
+          onBrowserActionClicked(tab);
+        }
+      });
     };
 
     async function onTabReplaced(addedTabId: number, removedTabId: number) {
@@ -302,10 +308,20 @@ export class Extension {
       state.clearTab(removedTabId);
 
       const tab = await chromeAPI.tabs.get(addedTabId);
+      chrome.storage.sync.get('alwaysOn', (response) => {
+        if (response.alwaysOn && tab.id && tab.url) {
+          onBrowserActionClicked(tab);
+        }
+      })
       updateAnnotationCountIfEnabled(addedTabId, tab.url!);
     }
 
     function onTabCreated(tab: chrome.tabs.Tab) {
+      chrome.storage.sync.get('alwaysOn', (response) => {
+        if (response.alwaysOn && tab.id && tab.url) {
+          onBrowserActionClicked(tab);
+        }
+      })
       // Clear the state in case there is old, conflicting data in storage.
       if (tab.id) {
         onTabRemoved(tab.id);
@@ -371,7 +387,7 @@ export class Extension {
             return;
           }
           if (!errors.shouldIgnoreInjectionError(err)) {
-            errors.report(err, 'Injecting Hypothesis sidebar', {
+            errors.report(err, 'Injecting KMASS sidebar', {
               url: tab.url,
             });
           }
@@ -409,7 +425,49 @@ export class Extension {
      *   the state of existing tabs has been determined.
      */
     this.init = async () => {
-      chromeAPI.browserAction.onClicked.addListener(onBrowserActionClicked);
+      chrome.contextMenus.onClicked.addListener((item, tab) => {
+        if (!tab || !tab.id) {
+          return;
+        }
+        const isActivate = state.isTabActive(tab.id);
+        if (item.menuItemId === "Always On") {
+          chrome.storage.sync.set({ alwaysOn: true });
+          if (!isActivate) {
+            onBrowserActionClicked(tab);
+          }
+        }
+        else {
+          chrome.storage.sync.set({ alwaysOn: false });
+          if (isActivate) {
+            onBrowserActionClicked(tab);
+          }
+        }
+      });
+
+      chrome.storage.onChanged.addListener(({alwaysOn}) => {
+        if (alwaysOn.newValue != alwaysOn.oldValue) {
+          chrome.contextMenus.remove(alwaysOn.oldValue? 'Disable Always On': 'Always On');
+          chrome.contextMenus.create({
+            title: alwaysOn.newValue? 'Disable Always On': 'Always On',
+            type: 'normal',
+            id: alwaysOn.newValue? 'Disable Always On': 'Always On',
+            contexts: ['all']
+          });
+        }
+      });
+
+      chromeAPI.browserAction.onClicked.addListener((tab: chrome.tabs.Tab) => {
+        chrome.storage.sync.get('alwaysOn', (response) => {
+          if (tab && tab.id) {
+            if (response.alwaysOn && state.isTabActive(tab.id)){
+              return;
+            }
+            else {
+              onBrowserActionClicked(tab);
+            }
+          }
+        })
+      });
 
       // Set up listeners for tab events.
       chromeAPI.tabs.onCreated.addListener(onTabCreated);

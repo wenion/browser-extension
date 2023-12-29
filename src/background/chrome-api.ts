@@ -140,6 +140,11 @@ export function getChromeAPI(chrome = globalThis.chrome) {
       },
     },
 
+    contextMenus: {
+      onClicked: chrome.contextMenus.onClicked,
+      create: chrome.contextMenus.create,
+    },
+
     // APIs that require optional permissions.
     //
     // These are resolved on-demand because the `chrome.<namespace>` properties

@@ -25,6 +25,14 @@ export async function init() {
       const extensionInfo = await chromeAPI.management.getSelf();
       extension.firstRun(extensionInfo);
     }
+
+    const { alwaysOn = false } = await chrome.storage.sync.get('alwaysOn');
+    chrome.contextMenus.create({
+      title: alwaysOn ? 'Disable Always On': 'Always On',
+      type: 'normal',
+      id: alwaysOn ? 'Disable Always On': 'Always On',
+      contexts: ['all']
+    });
   });
 
   // Respond to messages sent by the JavaScript from https://hyp.is.
