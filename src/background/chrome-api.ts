@@ -8,8 +8,6 @@
  *  - Provide a seam that can be easily mocked in tests
  */
 
-import settings from './settings';
-
 type Callback<Result> = (r: Result) => void;
 
 /**
@@ -44,7 +42,7 @@ export function getChromeAPI(chrome = globalThis.chrome) {
    * @return Wrapped API that doesn't take a callback but returns a Promise instead
    */
   function promisify<Args extends any[], Result>(
-    fn: (...args: [...Args, Callback<Result>]) => void
+    fn: (...args: [...Args, Callback<Result>]) => void,
   ): (...args: Args) => Promise<Result> {
     const cached = cache.get(fn);
     if (cached) {
@@ -66,7 +64,7 @@ export function getChromeAPI(chrome = globalThis.chrome) {
   }
 
   function promisifyAlt<Args extends any[], Result>(
-    fn: (...args: Args) => Promise<Result>
+    fn: (...args: Args) => Promise<Result>,
   ): (...args: Args) => Promise<Result> {
     // @ts-expect-error
     return promisify(fn);
@@ -85,7 +83,7 @@ export function getChromeAPI(chrome = globalThis.chrome) {
 
     extension: {
       isAllowedFileSchemeAccess: promisify(
-        chrome.extension.isAllowedFileSchemeAccess
+        chrome.extension.isAllowedFileSchemeAccess,
       ),
     },
 
@@ -122,12 +120,8 @@ export function getChromeAPI(chrome = globalThis.chrome) {
       onUpdated: chrome.tabs.onUpdated,
       query: promisifyAlt(chrome.tabs.query),
       update: promisify(chrome.tabs.update),
-
-      // Manifest V2 only.
-      executeScript: promisifyAlt(chrome.tabs.executeScript),
     },
 
-    // Manifest V3 only.
     scripting: {
       executeScript: chrome.scripting?.executeScript,
     },
@@ -169,16 +163,8 @@ export function getChromeAPI(chrome = globalThis.chrome) {
 export const chromeAPI = getChromeAPI();
 
 // The functions below are wrappers around the extension APIs for scripting
-// which abstract over differences between browsers (eg. Manifest V2 vs Manifest V3)
-// and provide a simpler and more strongly typed interface.
-
-/**
- * Generate a string of code which can be eval-ed to produce the same result
- * as invoking `func` with `args`.
- */
-function codeStringForFunctionCall(func: () => void, args: unknown[]) {
-  return `(${func})(${args.map(arg => JSON.stringify(arg)).join(',')})`;
-}
+// which abstract over differences between browsers and provide a simpler and
+// more strongly typed interface.
 
 export type ExecuteScriptOptions = {
   tabId: number;
@@ -191,25 +177,17 @@ export type ExecuteScriptOptions = {
  */
 export async function executeScript(
   { tabId, frameId, file }: ExecuteScriptOptions,
-  chromeAPI_ = chromeAPI
+  chromeAPI_ = chromeAPI,
 ): Promise<unknown> {
-  if (settings.manifestV3) {
-    const target: chrome.scripting.InjectionTarget = { tabId };
-    if (frameId) {
-      target.frameIds = [frameId];
-    }
-    const results = await chromeAPI_.scripting.executeScript({
-      target,
-      files: [file],
-    });
-    return results[0].result;
+  const target: chrome.scripting.InjectionTarget = { tabId };
+  if (frameId) {
+    target.frameIds = [frameId];
   }
-
-  const result = (await chromeAPI_.tabs.executeScript(tabId, {
-    frameId,
-    file,
-  })) as unknown[];
-  return result[0];
+  const results = await chromeAPI_.scripting.executeScript({
+    target,
+    files: [file],
+  });
+  return results[0].result;
 }
 
 export type ExecuteFunctionOptions<Args extends unknown[], Result> = {
@@ -231,27 +209,18 @@ export type ExecuteFunctionOptions<Args extends unknown[], Result> = {
  */
 export async function executeFunction<Args extends unknown[], Result>(
   { tabId, frameId, func, args }: ExecuteFunctionOptions<Args, Result>,
-  chromeAPI_ = chromeAPI
+  chromeAPI_ = chromeAPI,
 ): Promise<Result> {
-  if (settings.manifestV3) {
-    const target: chrome.scripting.InjectionTarget = { tabId };
-    if (frameId) {
-      target.frameIds = [frameId];
-    }
-    const results = await chromeAPI_.scripting.executeScript({
-      target,
-      func,
-      args,
-    });
-    return results[0].result as Result;
+  const target: chrome.scripting.InjectionTarget = { tabId };
+  if (frameId) {
+    target.frameIds = [frameId];
   }
-
-  const code = codeStringForFunctionCall(func, args);
-  const result = (await chromeAPI_.tabs.executeScript(tabId, {
-    frameId,
-    code,
-  })) as Result[];
-  return result[0];
+  const results = await chromeAPI_.scripting.executeScript({
+    target,
+    func,
+    args,
+  });
+  return results[0].result as Result;
 }
 
 export function getExtensionId(chromeAPI_ = chromeAPI) {

@@ -5,13 +5,7 @@
   {{#browserIsChrome}}
   "version_name": "{{ version }} ({{ versionName }})",
   {{/browserIsChrome}}
-
-  {{#manifestV3}}
   "manifest_version": 3,
-  {{/manifestV3}}
-  {{^manifestV3}}
-  "manifest_version": 2,
-  {{/manifestV3}}
 
   {{#browserIsChrome}}
   "minimum_chrome_version": "88",
@@ -54,67 +48,29 @@
   {{/browserIsChrome}}
 
   "permissions": [
-    {{#manifestV3}}
     "scripting",
-    "webRequest",
     "contextMenus",
-    {{/manifestV3}}
-
-    {{^manifestV3}}
-    "<all_urls>",
-    {{/manifestV3}}
-
     "storage",
     "tabs"
   ],
 
-  {{#manifestV3}}
   "host_permissions": ["<all_urls>"],
-  {{/manifestV3}}
 
   "optional_permissions": [
     {{! Used to enumerate frames on certain websites. }}
     "webNavigation"
   ],
 
-  {{^manifestV3}}
-  "content_security_policy": "script-src 'self'; object-src 'self'",
-  {{/manifestV3}}
-
-  {{#manifestV3}}
   "background": {
     "service_worker": "extension.bundle.js"
   },
-  {{/manifestV3}}
 
-  {{^manifestV3}}
-  "background": {
-    {{#browserIsChrome}}
-    "persistent": true,
-    {{/browserIsChrome}}
-    "scripts": [
-      "extension.bundle.js"
-     ]
-  },
-  {{/manifestV3}}
-
-  {{#manifestV3}}
   "action": {
     "default_icon": {
       "19": "images/browser-kmass-icon-inactive.png",
       "38": "images/browser-kmass-icon-inactive@2x.png"
     }
   },
-  {{/manifestV3}}
-
-  {{^manifestV3}}
-  "browser_action": {
-    "default_icon": {
-      "19": "images/browser-kmass-icon-inactive.png",
-      "38": "images/browser-kmass-icon-inactive@2x.png"
-    }
-  },
-  {{/manifestV3}}
 
   {{#browserIsChrome}}
   "externally_connectable": {
@@ -122,7 +78,6 @@
   },
   {{/browserIsChrome}}
 
-  {{#manifestV3}}
   "web_accessible_resources": [
     {
       "resources": [
@@ -134,14 +89,4 @@
       "matches": ["<all_urls>"]
     }
   ]
-  {{/manifestV3}}
-
-  {{^manifestV3}}
-  "web_accessible_resources": [
-    "client/*",
-    "help/*",
-    "pdfjs/*",
-    "pdfjs/web/viewer.html"
-  ]
-  {{/manifestV3}}
 }

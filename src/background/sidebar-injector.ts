@@ -41,7 +41,7 @@ function setClientConfig(config: object, extensionId: string) {
  */
 function isClientActive(extensionURL: string) {
   const annotatorLink = document.querySelector(
-    'link[type="application/annotator+html"]'
+    'link[type="application/annotator+html"]',
   ) as HTMLLinkElement | null;
   return annotatorLink?.href.startsWith(extensionURL) ?? false;
 }
@@ -337,7 +337,7 @@ export class SidebarInjector {
         // URL and open that in the Hypothesis viewer instead.
         const protocol = tab.url.split(':')[0];
         throw new RestrictedProtocolError(
-          `Cannot load Hypothesis into ${protocol} pages`
+          `Cannot load Hypothesis into ${protocol} pages`,
         );
       }
 
@@ -352,7 +352,7 @@ export class SidebarInjector {
         // embedded Hypothesis instance. The user can still use the extension on other
         // pages hosted in the LMS itself.
         throw new BlockedSiteError(
-          "Hypothesis extension can't be used on Hypothesis LMS assignments"
+          "Hypothesis extension can't be used on Hypothesis LMS assignments",
         );
       } else {
         // FIXME - Nothing actually sets `installedURL`. It used to be part of
@@ -365,7 +365,7 @@ export class SidebarInjector {
           !result.installedURL.includes(chromeAPI.runtime.getURL('/'))
         ) {
           throw new AlreadyInjectedError(
-            'Hypothesis is already injected into this page'
+            'Hypothesis is already injected into this page',
           );
         }
       }
@@ -380,7 +380,7 @@ export class SidebarInjector {
       const listener = (
         request: any,
         sender: chrome.runtime.MessageSender,
-        sendResponse: (response?: any) => void
+        sendResponse: (response?: any) => void,
       ) => {
         if (sender.tab?.id === tab.id && request?.type === 'getConfigForTab') {
           sendResponse(config);
@@ -467,7 +467,7 @@ export class SidebarInjector {
      *     |- jigsaw.vitalsource.com (Content of current chapter)
      */
     async function getVitalSourceViewerFrame(
-      tab: Tab
+      tab: Tab,
     ): Promise<chrome.webNavigation.GetAllFrameResultDetails | undefined> {
       // Using `chrome.webNavigation.getAllFrames` requires asking for the
       // `webNavigation` permission which results in a scary prompt about reading
@@ -535,7 +535,7 @@ export class SidebarInjector {
     function injectConfig(
       tabId: number,
       clientConfig: object,
-      frameId?: number
+      frameId?: number,
     ) {
       const extensionId = getExtensionId();
       return executeFunction({
