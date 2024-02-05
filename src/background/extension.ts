@@ -68,6 +68,8 @@ export class Extension {
     current: State | undefined,
   ) => Promise<void>;
 
+  private _lastActiveTabId: number | null;
+
   constructor() {
     const help = new HelpPage();
     const state = new TabState(onTabStateChange);
@@ -82,6 +84,8 @@ export class Extension {
      * the given URL.
      */
     const pendingActivations = new Map<number, ActivateOptions>();
+
+    this._lastActiveTabId = null;
 
     /**
      * Opens the onboarding page.
@@ -208,7 +212,7 @@ export class Extension {
           state.errorTab(
             tabId,
             new Error(
-              'Hypothesis could not get the permissions needed to load in this tab',
+              'GoldMind could not get the permissions needed to load in this tab',
             ),
           );
         }
@@ -387,7 +391,7 @@ export class Extension {
             return;
           }
           if (!errors.shouldIgnoreInjectionError(err)) {
-            errors.report(err, 'Injecting KMASS sidebar', {
+            errors.report(err, 'Injecting GoldMind sidebar', {
               url: tab.url,
             });
           }
@@ -482,6 +486,42 @@ export class Extension {
       chromeAPI.tabs.onReplaced.addListener(onTabReplaced);
 
       chromeAPI.tabs.onRemoved.addListener(onTabRemoved);
+
+      function sendToContentScript(activated: boolean) {
+        const msg = {type: 'extention', activated: activated}
+        window.postMessage(msg, '*')
+      }
+
+      // Listen for window focus changes
+      chrome.windows.onFocusChanged.addListener((windowId) => {
+        if (windowId === chrome.windows.WINDOW_ID_NONE) {
+          console.log('No window is focused');
+        } else {
+          // console.log(`Window focused: ${windowId}`);
+
+          // Get information about the active tab in the focused window
+          chrome.tabs.query({ active: true, lastFocusedWindow: true, windowId: windowId }, (tabs) => {
+            if (tabs && tabs[0] && tabs[0].id && tabs[0].url != "chrome://extensions/") {
+              const activeTabId = tabs[0].id;
+              if (this._lastActiveTabId && this._lastActiveTabId != activeTabId) {
+                chromeAPI.scripting.executeScript({
+                  target: { tabId: this._lastActiveTabId },
+                  func: sendToContentScript,
+                  args: [false],
+                })
+              }
+
+              chromeAPI.scripting.executeScript({
+                target: { tabId: activeTabId! },
+                func: sendToContentScript,
+                args: [true],
+              })
+              this._lastActiveTabId = activeTabId!;
+            }
+          });
+
+        }
+      });
 
       // Determine the state of the extension in existing tabs.
       await initTabStates();

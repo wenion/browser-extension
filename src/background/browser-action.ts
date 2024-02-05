@@ -7,12 +7,12 @@ import type { State as TabState } from './tab-state';
 // for hi-res screens (38).
 const icons = {
   active: {
-    19: 'images/browser-kmass-icon-active.png',
-    38: 'images/browser-kmass-icon-active@2x.png',
+    19: 'images/browser-gm-icon-active.png',
+    38: 'images/browser-gm-icon-active@2x.png',
   },
   inactive: {
-    19: 'images/browser-kmass-icon-inactive.png',
-    38: 'images/browser-kmass-icon-inactive@2x.png',
+    19: 'images/browser-gm-icon-inactive.png',
+    38: 'images/browser-gm-icon-inactive@2x.png',
   },
 };
 
