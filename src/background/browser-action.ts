@@ -7,8 +7,8 @@ import type { State as TabState } from './tab-state';
 // for hi-res screens (38).
 const icons = {
   active: {
-    19: 'images/browser-gm-icon-active.png',
-    38: 'images/browser-gm-icon-active@2x.png',
+    19: 'images/browser-gm2-icon-active.png',
+    38: 'images/browser-gm2-icon-active@2x.png',
   },
   inactive: {
     19: 'images/browser-gm-icon-inactive.png',
@@ -52,15 +52,15 @@ export class BrowserAction {
     switch (state.state) {
       case 'active':
         activeIcon = icons.active;
-        title = 'KMASS is active';
+        title = 'GoldMind is active';
         break;
       case 'inactive':
         activeIcon = icons.inactive;
-        title = 'KMASS is inactive';
+        title = 'GoldMind is inactive';
         break;
       case 'errored':
         activeIcon = icons.inactive;
-        title = 'KMASS failed to load';
+        title = 'GoldMind failed to load';
         badgeText = '!';
         break;
     }

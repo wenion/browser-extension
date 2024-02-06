@@ -45,6 +45,27 @@ function urlsEqual(urlA: string, urlB: string) {
   return normalizeURL(urlA) === normalizeURL(urlB);
 }
 
+function sendToContentScript(action: string, activated: boolean) {
+  const msg = {type: 'extention', data: {action: action, activated: activated}}
+  window.postMessage(msg, '*')
+}
+
+function accessibleURL(url: string|undefined) {
+  if (url === undefined || url === '') {
+    return false;
+  }
+  try {
+    const u = new URL(url);
+    if (u.protocol.startsWith('chrome:') || u.protocol.startsWith('chrome-extension:')) {
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Error parsing URL:', err)
+    return false;
+  }
+}
+
 /**
  * The main extension background application.
  *
@@ -68,7 +89,7 @@ export class Extension {
     current: State | undefined,
   ) => Promise<void>;
 
-  private _lastActiveTabId: number | null;
+  private _lastActiveTab: chrome.tabs.Tab | null;
 
   constructor() {
     const help = new HelpPage();
@@ -85,7 +106,7 @@ export class Extension {
      */
     const pendingActivations = new Map<number, ActivateOptions>();
 
-    this._lastActiveTabId = null;
+    this._lastActiveTab = null;
 
     /**
      * Opens the onboarding page.
@@ -312,17 +333,12 @@ export class Extension {
       state.clearTab(removedTabId);
 
       const tab = await chromeAPI.tabs.get(addedTabId);
-      chrome.storage.sync.get('alwaysOn', (response) => {
-        if (response.alwaysOn && tab.id && tab.url) {
-          onBrowserActionClicked(tab);
-        }
-      })
       updateAnnotationCountIfEnabled(addedTabId, tab.url!);
     }
 
     function onTabCreated(tab: chrome.tabs.Tab) {
       chrome.storage.sync.get('alwaysOn', (response) => {
-        if (response.alwaysOn && tab.id && tab.url) {
+        if (response.alwaysOn && tab.id && accessibleURL(tab.url)) {
           onBrowserActionClicked(tab);
         }
       })
@@ -487,39 +503,49 @@ export class Extension {
 
       chromeAPI.tabs.onRemoved.addListener(onTabRemoved);
 
-      function sendToContentScript(activated: boolean) {
-        const msg = {type: 'extention', activated: activated}
-        window.postMessage(msg, '*')
-      }
-
       // Listen for window focus changes
       chrome.windows.onFocusChanged.addListener((windowId) => {
         if (windowId === chrome.windows.WINDOW_ID_NONE) {
-          console.log('No window is focused');
+          if (
+            this._lastActiveTab &&
+            this._lastActiveTab.id &&
+            accessibleURL(this._lastActiveTab.url)
+          ) {
+            chromeAPI.scripting.executeScript({
+              target: { tabId: this._lastActiveTab.id },
+              func: sendToContentScript,
+              args: ['OnFocus', false],
+            })
+          }
         } else {
-          // console.log(`Window focused: ${windowId}`);
-
           // Get information about the active tab in the focused window
           chrome.tabs.query({ active: true, lastFocusedWindow: true, windowId: windowId }, (tabs) => {
-            if (tabs && tabs[0] && tabs[0].id && tabs[0].url != "chrome://extensions/") {
+            if (tabs && tabs[0] && tabs[0].id) {
               const activeTabId = tabs[0].id;
-              if (this._lastActiveTabId && this._lastActiveTabId != activeTabId) {
+              if (
+                this._lastActiveTab &&
+                this._lastActiveTab.id &&
+                this._lastActiveTab.id != activeTabId &&
+                accessibleURL(this._lastActiveTab.url)
+              ) {
                 chromeAPI.scripting.executeScript({
-                  target: { tabId: this._lastActiveTabId },
+                  target: { tabId: this._lastActiveTab.id },
                   func: sendToContentScript,
-                  args: [false],
+                  args: ['OnFocus', false],
                 })
               }
 
-              chromeAPI.scripting.executeScript({
-                target: { tabId: activeTabId! },
-                func: sendToContentScript,
-                args: [true],
-              })
-              this._lastActiveTabId = activeTabId!;
-            }
-          });
+              if (accessibleURL(tabs[0].url)) {
+                chromeAPI.scripting.executeScript({
+                  target: { tabId: activeTabId },
+                  func: sendToContentScript,
+                  args: ['OnFocus', true],
+                })
 
+              }
+            }
+            this._lastActiveTab = tabs[0];
+          });
         }
       });
 
