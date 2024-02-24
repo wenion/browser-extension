@@ -352,7 +352,7 @@ export class SidebarInjector {
         // embedded Hypothesis instance. The user can still use the extension on other
         // pages hosted in the LMS itself.
         throw new BlockedSiteError(
-          "Hypothesis extension can't be used on Hypothesis LMS assignments",
+          "GoldMind extension can't be used on GoldMind LMS assignments",
         );
       } else {
         // FIXME - Nothing actually sets `installedURL`. It used to be part of
@@ -365,7 +365,7 @@ export class SidebarInjector {
           !result.installedURL.includes(chromeAPI.runtime.getURL('/'))
         ) {
           throw new AlreadyInjectedError(
-            'Hypothesis is already injected into this page',
+            'GoldMind is already injected into this page',
           );
         }
       }
