@@ -45,9 +45,17 @@ function urlsEqual(urlA: string, urlB: string) {
   return normalizeURL(urlA) === normalizeURL(urlB);
 }
 
-function sendToContentScript(action: string, activated: boolean) {
-  const msg = {type: 'extention', data: {action: action, activated: activated}}
+function _sendToContentScript(data: Record<string, string | boolean>[]) {
+  const msg = {type: 'extention', data: data}
   window.postMessage(msg, '*')
+}
+
+function postMessageToContentScript(tabId: number, data: Record<string, string | boolean>[], ) {
+  chromeAPI.scripting.executeScript({
+    target: { tabId: tabId },
+    func: _sendToContentScript,
+    args: [data],
+  })
 }
 
 function accessibleURL(url: string|undefined) {
@@ -464,15 +472,23 @@ export class Extension {
         }
       });
 
-      chrome.storage.onChanged.addListener(({alwaysOn}) => {
-        if (alwaysOn.newValue != alwaysOn.oldValue) {
-          chrome.contextMenus.remove(alwaysOn.oldValue? 'Disable Always On': 'Always On');
-          chrome.contextMenus.create({
-            title: alwaysOn.newValue? 'Disable Always On': 'Always On',
-            type: 'normal',
-            id: alwaysOn.newValue? 'Disable Always On': 'Always On',
-            contexts: ['all']
-          });
+      chrome.storage.onChanged.addListener((changes, area) =>{
+        if (area === 'sync') {
+          for (let key in changes) {
+            if (key === 'alwaysOn') {
+              const newValue = changes[key].newValue;
+              const oldValue = changes[key].oldValue;
+              if (newValue !== oldValue) {
+                chrome.contextMenus.remove(oldValue? 'Disable Always On': 'Always On');
+                chrome.contextMenus.create({
+                  title: newValue ? 'Disable Always On': 'Always On',
+                  type: 'normal',
+                  id: newValue ? 'Disable Always On': 'Always On',
+                  contexts: ['all']
+                });
+              }
+            }
+          }
         }
       });
 
@@ -511,11 +527,7 @@ export class Extension {
             this._lastActiveTab.id &&
             accessibleURL(this._lastActiveTab.url)
           ) {
-            chromeAPI.scripting.executeScript({
-              target: { tabId: this._lastActiveTab.id },
-              func: sendToContentScript,
-              args: ['OnFocus', false],
-            })
+            postMessageToContentScript(this._lastActiveTab.id, [{name:'OnFocus', value:false}]);
           }
         } else {
           // Get information about the active tab in the focused window
@@ -528,20 +540,11 @@ export class Extension {
                 this._lastActiveTab.id != activeTabId &&
                 accessibleURL(this._lastActiveTab.url)
               ) {
-                chromeAPI.scripting.executeScript({
-                  target: { tabId: this._lastActiveTab.id },
-                  func: sendToContentScript,
-                  args: ['OnFocus', false],
-                })
+                postMessageToContentScript(this._lastActiveTab.id, [{name:'OnFocus', value:false}]);
               }
 
               if (accessibleURL(tabs[0].url)) {
-                chromeAPI.scripting.executeScript({
-                  target: { tabId: activeTabId },
-                  func: sendToContentScript,
-                  args: ['OnFocus', true],
-                })
-
+                postMessageToContentScript(activeTabId, [{name:'OnFocus', value:true}]);
               }
             }
             this._lastActiveTab = tabs[0];
