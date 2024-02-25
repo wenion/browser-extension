@@ -422,6 +422,7 @@ export class Extension {
           state.errorTab(tabId, err);
         }
       } else if (state.isTabInactive(tabId) && isInstalled) {
+        postMessageToContentScript(tabId, [{name: 'TurnOff', value:true}, {name: 'url', value: tab.url ?? 'undefined'}])
         await sidebarInjector.removeFromTab(tab);
         state.setState(tabId, {
           extensionSidebarInstalled: false,
