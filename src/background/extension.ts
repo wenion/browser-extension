@@ -50,7 +50,7 @@ function _sendToContentScript(data: Record<string, string | boolean>[]) {
   window.postMessage(msg, '*')
 }
 
-function postMessageToContentScript(tabId: number, data: Record<string, string | boolean>[], ) {
+export function postMessageToContentScript(tabId: number, data: Record<string, string | boolean>[], ) {
   chromeAPI.scripting.executeScript({
     target: { tabId: tabId },
     func: _sendToContentScript,
