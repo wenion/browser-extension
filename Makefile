@@ -4,6 +4,7 @@ ROLLUP := node_modules/.bin/rollup
 ESLINT := node_modules/.bin/eslint
 MUSTACHE := node_modules/.bin/mustache
 PRETTIER := node_modules/.bin/prettier
+TSC := node_modules/.bin/tsc
 
 .PHONY: default
 default: help
@@ -55,6 +56,7 @@ extension: build/client/notebook.html
 extension: build/client/profile.html
 extension: build/unload-client.js
 extension: build/pdfjs-init.js
+extension: build/content-script
 extension: $(addprefix build/,$(EXTENSION_SRC))
 
 build/extension.bundle.js: src/background/*.ts rollup.config.mjs build/settings.json
@@ -77,6 +79,11 @@ build/unload-client.js: src/unload-client.js
 	cp $< $@
 build/pdfjs-%.js: src/pdfjs-%.js
 	cp $< $@
+build/content-script: src/content-script.ts
+	$(TSC) $<
+	cp src/content-script.js build/
+	rm src/content-script.js
+	cp src/unload-content-script.js build/
 build/pdfjs: src/vendor/pdfjs
 	cp -R $< $@
 build/%: src/%

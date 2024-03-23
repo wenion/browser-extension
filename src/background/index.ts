@@ -35,6 +35,23 @@ export async function init() {
     });
   });
 
+  chrome.runtime.onMessage.addListener(async(message, sender, sendResponse) => {
+    if (!sender.tab?.id || !sender.tab?.url) {
+      return
+    }
+
+    let _message = message;
+    _message.url = sender.tab?.url;
+    _message.source = 'extension';
+
+    if (message.messageType === 'UserEvent' && message.type === 'click') {
+      const screenshotUrl = await chrome.tabs.captureVisibleTab();
+      _message.image = screenshotUrl;
+    }
+
+    chrome.tabs.sendMessage(sender.tab.id, _message);
+  });
+
   // Respond to messages sent by the JavaScript from https://hyp.is.
   // This is how it knows whether the user has this Chrome extension installed.
   chromeAPI.runtime.onMessageExternal.addListener(

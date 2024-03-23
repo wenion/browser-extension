@@ -45,35 +45,6 @@ function urlsEqual(urlA: string, urlB: string) {
   return normalizeURL(urlA) === normalizeURL(urlB);
 }
 
-function _sendToContentScript(data: Record<string, string | boolean>[]) {
-  const msg = {type: 'extention', data: data}
-  window.postMessage(msg, '*')
-}
-
-export function postMessageToContentScript(tabId: number, data: Record<string, string | boolean>[], ) {
-  chromeAPI.scripting.executeScript({
-    target: { tabId: tabId },
-    func: _sendToContentScript,
-    args: [data],
-  })
-}
-
-function accessibleURL(url: string|undefined) {
-  if (url === undefined || url === '') {
-    return false;
-  }
-  try {
-    const u = new URL(url);
-    if (u.protocol.startsWith('chrome:') || u.protocol.startsWith('chrome-extension:')) {
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error('Error parsing URL:', err)
-    return false;
-  }
-}
-
 /**
  * The main extension background application.
  *
@@ -97,8 +68,6 @@ export class Extension {
     current: State | undefined,
   ) => Promise<void>;
 
-  private _lastActiveTab: chrome.tabs.Tab | null;
-
   constructor() {
     const help = new HelpPage();
     const state = new TabState(onTabStateChange);
@@ -113,8 +82,6 @@ export class Extension {
      * the given URL.
      */
     const pendingActivations = new Map<number, ActivateOptions>();
-
-    this._lastActiveTab = null;
 
     /**
      * Opens the onboarding page.
@@ -345,11 +312,6 @@ export class Extension {
     }
 
     function onTabCreated(tab: chrome.tabs.Tab) {
-      chrome.storage.sync.get('alwaysOn', (response) => {
-        if (response.alwaysOn && tab.id && accessibleURL(tab.url)) {
-          onBrowserActionClicked(tab);
-        }
-      })
       // Clear the state in case there is old, conflicting data in storage.
       if (tab.id) {
         onTabRemoved(tab.id);
@@ -422,7 +384,6 @@ export class Extension {
           state.errorTab(tabId, err);
         }
       } else if (state.isTabInactive(tabId) && isInstalled) {
-        postMessageToContentScript(tabId, [{name: 'TurnOff', value:true}, {name: 'url', value: tab.url ?? 'undefined'}])
         await sidebarInjector.removeFromTab(tab);
         state.setState(tabId, {
           extensionSidebarInstalled: false,
@@ -519,39 +480,6 @@ export class Extension {
       chromeAPI.tabs.onReplaced.addListener(onTabReplaced);
 
       chromeAPI.tabs.onRemoved.addListener(onTabRemoved);
-
-      // Listen for window focus changes
-      chrome.windows.onFocusChanged.addListener((windowId) => {
-        if (windowId === chrome.windows.WINDOW_ID_NONE) {
-          if (
-            this._lastActiveTab &&
-            this._lastActiveTab.id &&
-            accessibleURL(this._lastActiveTab.url)
-          ) {
-            postMessageToContentScript(this._lastActiveTab.id, [{name:'OnFocus', value:false}]);
-          }
-        } else {
-          // Get information about the active tab in the focused window
-          chrome.tabs.query({ active: true, lastFocusedWindow: true, windowId: windowId }, (tabs) => {
-            if (tabs && tabs[0] && tabs[0].id) {
-              const activeTabId = tabs[0].id;
-              if (
-                this._lastActiveTab &&
-                this._lastActiveTab.id &&
-                this._lastActiveTab.id != activeTabId &&
-                accessibleURL(this._lastActiveTab.url)
-              ) {
-                postMessageToContentScript(this._lastActiveTab.id, [{name:'OnFocus', value:false}]);
-              }
-
-              if (accessibleURL(tabs[0].url)) {
-                postMessageToContentScript(activeTabId, [{name:'OnFocus', value:true}]);
-              }
-            }
-            this._lastActiveTab = tabs[0];
-          });
-        }
-      });
 
       // Determine the state of the extension in existing tabs.
       await initTabStates();
