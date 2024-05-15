@@ -426,11 +426,20 @@ export class Extension {
             onBrowserActionClicked(tab);
           }
         }
-        else {
+        else if (item.menuItemId === "Disable Always On") {
           chrome.storage.sync.set({ alwaysOn: false });
           if (isActivate) {
             onBrowserActionClicked(tab);
           }
+        }
+        else {
+          chrome.storage.sync.set({mode: item.menuItemId})
+          chrome.tabs.sendMessage(tab.id, {
+            messageType: 'message',
+            type: 'mode',
+            mode: item.menuItemId,
+            url: tab.url
+          })
         }
       });
 
@@ -448,6 +457,15 @@ export class Extension {
                   id: newValue ? 'Disable Always On': 'Always On',
                   contexts: ['all']
                 });
+              }
+            }
+            else if ( key === 'mode') {
+              const newValue = changes[key].newValue;
+              const oldValue = changes[key].oldValue;
+              if (newValue !== oldValue) {
+                chrome.contextMenus.update('parent', {
+                  title: changes[key].newValue,
+                })
               }
             }
           }

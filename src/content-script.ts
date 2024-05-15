@@ -150,6 +150,7 @@ class UserEvent implements Destroyable {
 }
 
 function onMessageReceived(message: any, sender: chrome.runtime.MessageSender, sendResponse: ()=>void) {
+  console.log('message', message, message.url)
   window.postMessage(message, message.url)
 }
 
@@ -261,6 +262,21 @@ const initContentScript = async() => {
       });
     })
     destroyables.push(beforeunloadEvent)
+
+    const messageEvent = new UserEvent(window, 'message', async (event: Event) => {
+      const _event = event as MessageEvent;
+      const mode = await chrome.storage.sync.get('mode');
+      if (_event.data.source && _event.data.source == 'sidebar' && _event.data.request) {
+        if (_event.data.request == 'mode') {
+          chrome.runtime.sendMessage({
+            messageType: 'message',
+            type: 'mode',
+            mode: mode.mode
+          })
+        }
+      }
+    })
+    destroyables.push(messageEvent)
 
     chrome.runtime.onMessage.addListener(onMessageReceived)
 

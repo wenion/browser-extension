@@ -33,6 +33,35 @@ export async function init() {
       id: alwaysOn ? 'Disable Always On': 'Always On',
       contexts: ['all']
     });
+
+    const mode = await chrome.storage.sync.get('mode');
+    if (!mode.mode) {
+      await chrome.storage.sync.set({mode: 'Baseline'});
+    }
+    let mode_item = chrome.contextMenus.create({
+      title: 'Select Mode',
+      id: 'parent',
+      contexts: ['action']
+    })
+    chrome.contextMenus.create({
+      title: 'Baseline',
+      parentId: mode_item,
+      checked: mode.mode === 'Baseline',
+      id: 'Baseline',
+      type: 'radio',
+      contexts: ['action']
+    })
+    chrome.contextMenus.create({
+      title: 'GoldMind',
+      parentId: mode_item,
+      checked: mode.mode === 'GoldMind',
+      id: 'GoldMind',
+      type: 'radio',
+      contexts: ['action']
+    })
+    chrome.contextMenus.update('parent', {
+      title: mode.mode,
+    })
   });
 
   chrome.runtime.onMessage.addListener(async(message, sender, sendResponse) => {
