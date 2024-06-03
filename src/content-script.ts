@@ -149,11 +149,6 @@ class UserEvent implements Destroyable {
   }
 }
 
-function onMessageReceived(message: any, sender: chrome.runtime.MessageSender, sendResponse: ()=>void) {
-  console.log('message', message, message.url)
-  window.postMessage(message, message.url)
-}
-
 const initContentScript = async() => {
   const destroyables = [] as Destroyable[];
   let _lastScrollEvent: {timeStamp: number, scrollX: number, scrollY: number} | null = null;
@@ -163,12 +158,27 @@ const initContentScript = async() => {
     contentScriptInjector = document.createElement('content-scrpit');
     document.body.appendChild(contentScriptInjector);
 
-    const clickEvent = new UserEvent(document.body, 'click', (event) => {
+    let port: MessagePort | null = null;
+    const messageEventHandler = async (event: MessageEvent) => {
+      const { data } = event;
+
+      if (data.frame1 === 'sidebar' && data.frame2 === 'extension' && data.type === 'request') {
+        port = event.ports[0];
+        if (port) {
+          const mode = await chrome.storage.sync.get('mode');
+          port.postMessage({messageType: 'Init', mode: mode.mode,})
+          window.removeEventListener('message', messageEventHandler);
+        }
+      }
+    }
+    window.addEventListener('message', messageEventHandler);
+
+    const clickEvent = new UserEvent(document.body, 'click', async (event) => {
       const _event = event as PointerEvent;
       if (_event.target instanceof HTMLElement) {
         const _target = _event.target as HTMLElement;
         chrome.runtime.sendMessage({
-          messageType: 'UserEvent',
+          messageType: 'TraceData',
           type: _event.type,
           clientX: _event.clientX,
           clientY: _event.clientY,
@@ -182,7 +192,7 @@ const initContentScript = async() => {
       }
       else {
         chrome.runtime.sendMessage({
-          messageType: 'UserEvent',
+          messageType: 'TraceData',
           type: _event.type,
           clientX: _event.clientX,
           clientY: _event.clientY,
@@ -216,7 +226,7 @@ const initContentScript = async() => {
       }
       if (event.timeStamp - _lastScrollEvent.timeStamp > 20) {
         chrome.runtime.sendMessage({
-          messageType: 'UserEvent',
+          messageType: 'TraceData',
           type: event.type,
           diffX: window.scrollX - _lastScrollEvent.scrollX,
           diffY: window.scrollY - _lastScrollEvent.scrollY,
@@ -239,7 +249,7 @@ const initContentScript = async() => {
       const _event = event as KeyboardEvent;
 
       chrome.runtime.sendMessage({
-        messageType: 'UserEvent',
+        messageType: 'TraceData',
         type: event.type,
         code: _event.code,
         key: _event.key,
@@ -255,7 +265,7 @@ const initContentScript = async() => {
 
     const beforeunloadEvent = new UserEvent(window, 'beforeunload', (event) => {
       chrome.runtime.sendMessage({
-        messageType: 'UserEvent',
+        messageType: 'TraceData',
         type: event.type,
         width: window.innerWidth,
         height: window.innerHeight,
@@ -263,20 +273,15 @@ const initContentScript = async() => {
     })
     destroyables.push(beforeunloadEvent)
 
-    const messageEvent = new UserEvent(window, 'message', async (event: Event) => {
-      const _event = event as MessageEvent;
-      const mode = await chrome.storage.sync.get('mode');
-      if (_event.data.source && _event.data.source == 'sidebar' && _event.data.request) {
-        if (_event.data.request == 'mode') {
-          chrome.runtime.sendMessage({
-            messageType: 'message',
-            type: 'mode',
-            mode: mode.mode
-          })
-        }
+    const onMessageReceived = (message: any, sender: chrome.runtime.MessageSender, sendResponse: ()=>void) => {
+      const _message = Object.assign(message, {source: 'extension'})
+      if (port) {
+        port.postMessage(_message)
       }
-    })
-    destroyables.push(messageEvent)
+      else {
+        console.error('port is unavailable', _message, "sender", sender)
+      }
+    }
 
     chrome.runtime.onMessage.addListener(onMessageReceived)
 

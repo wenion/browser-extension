@@ -69,10 +69,7 @@ export async function init() {
       return
     }
 
-    let _message = message;
-    _message.url = sender.tab?.url;
-    _message.source = 'extension';
-
+    const _message = Object.assign(message, {url: sender.tab.url});
     if (message.messageType === 'UserEvent' && message.type === 'click') {
       const screenshotUrl = await chrome.tabs.captureVisibleTab();
       _message.image = screenshotUrl;

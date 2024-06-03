@@ -450,6 +450,13 @@ export class SidebarInjector {
       if (!isSupportedURL(tab.url)) {
         return;
       }
+      chrome.tabs.sendMessage(tab.id, {
+        messageType: 'Action',
+        type: 'click',
+        sub: 'remove',
+        content: 'HTML',
+        url: tab.url,
+      })
       await executeScript({
         tabId: tab.id,
         files: ['/unload-client.js', '/unload-content-script.js'],
