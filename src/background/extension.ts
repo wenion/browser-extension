@@ -437,11 +437,7 @@ export class Extension {
           const isActivate = state.isTabActive(tab.id);
           if (isActivate) {
             chrome.tabs.sendMessage(tab.id, {
-              messageType: 'Action',
-              type: 'click',
-              sub: 'mode',
               mode: item.menuItemId,
-              url: tab.url
             })
           }
         }

@@ -70,7 +70,14 @@ export async function init() {
     }
 
     const _message = Object.assign(message, {url: sender.tab.url});
-    if (message.messageType === 'UserEvent' && message.type === 'click') {
+    if (message.messageType === 'TraceData' && message.enableCapture &&
+        (
+          message.type === 'pointerdown' ||
+          message.type === 'click' ||
+          message.type === 'select' ||
+          message.type === 'drop' ||
+          message.type === 'navigate'
+        )) {
       const screenshotUrl = await chrome.tabs.captureVisibleTab();
       _message.image = screenshotUrl;
     }
