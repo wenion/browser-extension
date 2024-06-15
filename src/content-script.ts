@@ -196,6 +196,8 @@ let _lastScrollEvent: {timeStamp: number, scrollX: number, scrollY: number} | nu
 let port: MessagePort | null = null;
 let _messageQueue: object[] = [];
 let enableCapture = false;
+let recordingSessionId = '';
+let recordingTaskName = '';
 
 function send(port: MessagePort, message: object) {
   const id = generateRandomString(12)
@@ -458,13 +460,11 @@ const initContentScript = async() => {
               disable();
             }
 
-
-            if (_data.recording && _data.recording === 'on') {
-              enableCapture = true
-              navigate()
-            }
-            if (_data.recording && _data.recording === 'off') {
-              enableCapture = false
+            if (_data.recording) {
+              recordingSessionId = _data.recording.recordingSessionId;
+              recordingTaskName = _data.recording.recordingTaskName;
+              enableCapture = _data.recording.recordingStatus === 'on' ? true : false;
+              if (enableCapture) navigate();
             }
           }
           window.removeEventListener('message', messageEventHandler);
