@@ -225,7 +225,7 @@ async function setup(port: MessagePort) {
   const mode = await chrome.storage.sync.get('mode');
   send(port, {mode: mode.mode,});
   send(port, {recording:'request'});
-  // navigate();
+  navigate();
 }
 
 function enable() {
