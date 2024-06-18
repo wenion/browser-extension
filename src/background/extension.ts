@@ -468,6 +468,12 @@ export class Extension {
                 })
               }
             }
+            else if (key === 'model') {
+              chrome.runtime.restart();
+            }
+            else if (key === 'token') {
+              chrome.runtime.restart();
+            }
           }
         }
       });

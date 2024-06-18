@@ -222,9 +222,8 @@ function navigate() {
 }
 
 async function setup(port: MessagePort) {
-  const mode = await chrome.storage.sync.get('mode');
-  send(port, {mode: mode.mode,});
-  send(port, {recording:'request'});
+  const env = await chrome.storage.sync.get(['mode', 'model', 'token',]);
+  send(port, {...env, recording:'request'});
   navigate();
 }
 
