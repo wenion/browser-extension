@@ -465,6 +465,10 @@ const initContentScript = async() => {
               enableCapture = _data.recording.recordingStatus === 'on' ? true : false;
               if (enableCapture) navigate();
             }
+
+            if (_data.mode) {
+              chrome.storage.sync.set({mode: _data.mode})
+            }
           }
           window.removeEventListener('message', messageEventHandler);
         }

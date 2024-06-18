@@ -466,6 +466,12 @@ export class Extension {
                 chrome.contextMenus.update('parent', {
                   title: changes[key].newValue,
                 })
+                chrome.contextMenus.update('Baseline', {
+                  checked: newValue === 'Baseline' ? true : false,
+                });
+                chrome.contextMenus.update('GoldMind', {
+                  checked: newValue === 'GoldMind' ? true : false,
+                });
               }
             }
             else if (key === 'model') {
