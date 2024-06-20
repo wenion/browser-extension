@@ -190,6 +190,18 @@ class UserEvent implements Destroyable {
 }
 
 const destroyables = [] as Destroyable[];
+let lastEvent : {
+  type: string,
+  timeStamp?: number,
+  scrollX?: number,
+  scrollY?: number,
+  tagName?: string,
+  xpath?: string,
+  name?: string,
+  value?: string,
+  code?: string,
+  key?: string,
+} = {type: 'initial'};
 let lastSelectEvent = '';
 let _lastScrollEvent: {timeStamp: number, scrollX: number, scrollY: number} | null = null;
 
@@ -263,6 +275,7 @@ function enable() {
         enableCapture: enableCapture,
       });
     }
+    lastEvent = {type: _event.type};
   })
   destroyables.push(clickEvent)
 
@@ -291,6 +304,7 @@ function enable() {
         });
       })
     }
+    lastEvent = {type: _event.type};
   })
   destroyables.push(mouseoverEvent);
 
@@ -317,6 +331,7 @@ function enable() {
         enableCapture: enableCapture,
       });
     }
+    lastEvent = {type: event.type};
   })
   destroyables.push(selectEvent);
 
@@ -352,6 +367,7 @@ function enable() {
       height: window.innerHeight,
       enableCapture: enableCapture,
     });
+    lastEvent = {type: event.type};
    })
    destroyables.push(dropEvent);
 
@@ -381,17 +397,63 @@ function enable() {
         height: window.innerHeight,
         enableCapture: enableCapture,
       });
-      _lastScrollEvent = {
-        timeStamp: event.timeStamp,
-        scrollX: window.scrollX,
-        scrollY: window.scrollY
-      }
     }
+    _lastScrollEvent = {
+      timeStamp: event.timeStamp,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY
+    };
+    lastEvent = {type: event.type, timeStamp: event.timeStamp, scrollX: window.scrollX, scrollY: window.scrollY};
   })
   destroyables.push(scrollEvent);
 
+  const contextmenuEvent = new UserEvent(window, "contextmenu", (event) => {
+    console.log("contextmenuEvent", event)
+  });
+  destroyables.push(contextmenuEvent)
+
+  const pasteEvent = new UserEvent(window, "paste", (event) => {
+    console.log("paste", event)
+  });
+  destroyables.push(pasteEvent)
+
+  // const selectEvent2 = new UserEvent(window, "select", (event) => {
+  //   console.log("select", event)
+  // });
+
+  const changeEvent = new UserEvent(window, "change", (event) => {
+    const _target = event.target as HTMLInputElement;
+    if (_target) {
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: event.type,
+        xpath: getXPath(_target)?? '',
+        tagName: _target.type ?? '',
+        textContent: _target.value,
+        interactionContext: JSON.stringify({name: _target.name, value: _target.value}),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    }
+  });
+  destroyables.push(changeEvent)
+
   const keyupEvent = new UserEvent(document.body, 'keyup', (event) => {
     const _event = event as KeyboardEvent;
+    let value = _event.target? (_event.target as HTMLInputElement).value : ''
+    let name = _event.target ? (_event.target as HTMLInputElement).name : null;
+    if (name === '') {
+      let classList = _event.target ? (_event.target as HTMLInputElement).classList : [];
+      if (classList.length) {
+        name = classList[0];
+      }
+      else {
+        name = null;
+      }
+    }
+    if (name === null) { name = '' }
 
     chrome.runtime.sendMessage({
       messageType: 'TraceData',
@@ -401,12 +463,21 @@ function enable() {
       xpath: _event.target? getXPath(_event.target as Element) : '',
       tagName: (_event.target as Node).nodeName ?? '',
       textContent: _event.code,
-      interactionContext: JSON.stringify({code: _event.code,key: _event.key,}),
+      interactionContext: JSON.stringify({code: _event.code,key: _event.key, name:name, value:value}),
       eventSource: 'KEYBOARD',
       width: window.innerWidth,
       height: window.innerHeight,
       enableCapture: enableCapture,
     });
+    lastEvent = {
+      type: event.type,
+      tagName: (_event.target as Node).nodeName ?? '',
+      code: _event.code,
+      key: _event.key,
+      xpath: _event.target? getXPath(_event.target as Element) : '',
+      name: _event.target? (_event.target as HTMLInputElement).name ?? '': '',
+      value: _event.target? (_event.target as HTMLInputElement).value ?? '': '',
+    };
   })
   destroyables.push(keyupEvent)
 
@@ -423,6 +494,7 @@ function enable() {
       height: window.innerHeight,
       enableCapture: enableCapture,
     });
+    lastEvent = {type: event.type};
   })
   destroyables.push(beforeunloadEvent)
 }
