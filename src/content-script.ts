@@ -192,7 +192,7 @@ class UserEvent implements Destroyable {
 const destroyables = [] as Destroyable[];
 let lastEvent : {
   type: string,
-  timeStamp?: number,
+  timeStamp: number,
   scrollX?: number,
   scrollY?: number,
   tagName?: string,
@@ -201,7 +201,8 @@ let lastEvent : {
   value?: string,
   code?: string,
   key?: string,
-} = {type: 'initial'};
+} = {type: 'initial', timeStamp: 0};
+let lastPointerdownEvent = {type: 'pointerdown', timeStamp: 0, clientX: 0, clientY: 0}
 let lastSelectEvent = '';
 let _lastScrollEvent: {timeStamp: number, scrollX: number, scrollY: number} | null = null;
 
@@ -242,6 +243,12 @@ async function setup(port: MessagePort) {
 function enable() {
   const clickEvent = new UserEvent(document.body, 'pointerdown', async (event) => {
     const _event = event as PointerEvent;
+    if (lastPointerdownEvent.type === 'pointerdown' &&
+      Math.abs(_event.clientX - lastPointerdownEvent.clientX) < 1 &&
+      Math.abs(_event.clientY - lastPointerdownEvent.clientY) < 1 &&
+      _event.timeStamp - lastPointerdownEvent.timeStamp < 999) {
+      return;
+    }
     if (_event.target instanceof HTMLElement) {
       const _target = _event.target as HTMLElement;
       chrome.runtime.sendMessage({
@@ -275,13 +282,18 @@ function enable() {
         enableCapture: enableCapture,
       });
     }
-    lastEvent = {type: _event.type};
+    lastPointerdownEvent = {type: _event.type, timeStamp: _event.timeStamp, clientX: _event.clientX, clientY: _event.clientY};
   })
   destroyables.push(clickEvent)
 
   // const mousedownEvent = new UserEvent(document.body, 'mousedown', (event) => {
   // })
   // destroyables.push(mousedownEvent);
+
+  const dblclickEvent = new UserEvent(document.body, 'dblclick', (event) => {
+    console.log('dblclick',)
+  })
+  destroyables.push(dblclickEvent);
 
   const mouseoverEvent = new UserEvent(document.body, 'mouseover', (event) => {
     const _event = event as MouseEvent;
@@ -304,7 +316,7 @@ function enable() {
         });
       })
     }
-    lastEvent = {type: _event.type};
+    lastEvent = {type: _event.type, timeStamp: _event.timeStamp};
   })
   destroyables.push(mouseoverEvent);
 
@@ -331,7 +343,7 @@ function enable() {
         enableCapture: enableCapture,
       });
     }
-    lastEvent = {type: event.type};
+    lastEvent = {type: event.type, timeStamp: _event.timeStamp};
   })
   destroyables.push(selectEvent);
 
@@ -367,7 +379,7 @@ function enable() {
       height: window.innerHeight,
       enableCapture: enableCapture,
     });
-    lastEvent = {type: event.type};
+    lastEvent = {type: event.type, timeStamp: _event.timeStamp};
    })
    destroyables.push(dropEvent);
 
@@ -471,6 +483,7 @@ function enable() {
     });
     lastEvent = {
       type: event.type,
+      timeStamp: event.timeStamp,
       tagName: (_event.target as Node).nodeName ?? '',
       code: _event.code,
       key: _event.key,
@@ -494,7 +507,7 @@ function enable() {
       height: window.innerHeight,
       enableCapture: enableCapture,
     });
-    lastEvent = {type: event.type};
+    lastEvent = {type: event.type, timeStamp: event.timeStamp};
   })
   destroyables.push(beforeunloadEvent)
 }
