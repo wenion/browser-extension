@@ -636,6 +636,7 @@ function disable() {
 console.log("init script>>>")
 
 const initContentScript = async() => {
+  const _messageQueue : object[] = [];
   let contentScriptInjector = document.querySelector('content-scrpit')
   if (!contentScriptInjector) {
     contentScriptInjector = document.createElement('content-scrpit');
@@ -681,10 +682,15 @@ const initContentScript = async() => {
 
     const onMessageReceived = (message: any, sender: chrome.runtime.MessageSender, sendResponse: ()=>void) => {
       if (port){
+        while(_messageQueue.length > 0) {
+          const message = _messageQueue.shift();
+          if (message)
+            send(port, message);
+        }
         send(port, message);
       }
       else {
-        console.error("unsend", message)
+        _messageQueue.push(message);
       }
     }
 
