@@ -65,6 +65,7 @@ export async function init() {
   });
 
   chrome.runtime.onMessage.addListener(async(message, sender, sendResponse) => {
+    // cache
     if (!sender.tab?.id || !sender.tab?.url) {
       return
     }
@@ -74,9 +75,11 @@ export async function init() {
         (
           message.type === 'pointerdown' ||
           message.type === 'click' ||
+          message.type === 'submit' ||
           message.type === 'select' ||
           message.type === 'drop' ||
-          message.type === 'navigate'
+          message.type === 'navigate'||
+          message.shouldCapture
         )) {
       const screenshotUrl = await chrome.tabs.captureVisibleTab();
       _message.image = screenshotUrl;

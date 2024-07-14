@@ -243,14 +243,8 @@ async function setup(port: MessagePort) {
 function enable() {
   const clickEvent = new UserEvent(document.body, 'pointerdown', async (event) => {
     const _event = event as PointerEvent;
-    if (lastPointerdownEvent.type === 'pointerdown' &&
-      Math.abs(_event.clientX - lastPointerdownEvent.clientX) < 1 &&
-      Math.abs(_event.clientY - lastPointerdownEvent.clientY) < 1 &&
-      _event.timeStamp - lastPointerdownEvent.timeStamp < 999) {
-      return;
-    }
-    if (_event.target instanceof HTMLElement) {
-      const _target = _event.target as HTMLElement;
+    const _target = _event.target;
+    if (_target instanceof HTMLInputElement) {
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
         type: 'click',
@@ -258,24 +252,84 @@ function enable() {
         clientY: _event.clientY,
         tagName: _target.tagName,
         textContent: _target.textContent,
-        interactionContext: _target.innerText,
+        interactionContext: JSON.stringify({type: _target.type, name: _target.name, value: _target.value, inner_text: _target.innerText}),
         xpath: getXPath(_target),
         eventSource: 'MOUSE',
         width: window.innerWidth,
         height: window.innerHeight,
         enableCapture: enableCapture,
       });
-    }
-    else {
+    } else if (_target instanceof HTMLSpanElement) {
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
         type: 'click',
         clientX: _event.clientX,
         clientY: _event.clientY,
-        tagName: (_event.target as Element).tagName ?? (_event.target as Node).nodeName ?? '',
-        textContent: (_event.target as Node).textContent ?? '',
-        interactionContext: (_event.target as HTMLElement).innerText ?? (_event.target as Node).nodeType ?? '',
-        xpath: '',
+        tagName: _target.tagName,
+        textContent: _target.textContent,
+        interactionContext: JSON.stringify({name: _target.textContent, inner_text: _target.innerText}),
+        xpath: getXPath(_target),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else if (_target instanceof HTMLSelectElement) {
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: 'click',
+        clientX: _event.clientX,
+        clientY: _event.clientY,
+        tagName: _target.tagName,
+        textContent: _target.textContent,
+        interactionContext: JSON.stringify({type: _target.type, name: _target.labels[0].innerText, value: _target.options[_target.selectedIndex].innerText, inner_text: _target.innerText}),
+        xpath: getXPath(_target),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else if (_target instanceof HTMLDivElement){
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: 'click',
+        clientX: _event.clientX,
+        clientY: _event.clientY,
+        tagName: _target.tagName,
+        textContent: _target.textContent,
+        interactionContext: JSON.stringify({title: _target.title, name:_target.role, value: _target.textContent, inner_text: _target.innerText}),
+        xpath: getXPath(_target),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else if (_target instanceof HTMLElement) {
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: 'click',
+        clientX: _event.clientX,
+        clientY: _event.clientY,
+        tagName: _target.tagName,
+        textContent: _target.textContent,
+        interactionContext: JSON.stringify({name: _target.nodeName, value: _target.nodeValue, inner_text: _target.innerText}),
+        xpath: getXPath(_target),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else {
+      const element = _target as Element;
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: 'click',
+        clientX: _event.clientX,
+        clientY: _event.clientY,
+        tagName: element.tagName,
+        textContent: element.textContent,
+        interactionContext: JSON.stringify({type: element.nodeType, name: element.nodeName, value: element.nodeValue}),
+        xpath: getXPath(element),
         eventSource: 'MOUSE',
         width: window.innerWidth,
         height: window.innerHeight,
@@ -289,6 +343,28 @@ function enable() {
   // const mousedownEvent = new UserEvent(document.body, 'mousedown', (event) => {
   // })
   // destroyables.push(mousedownEvent);
+
+  const mousedownEvent = new UserEvent(document.body, 'submit', (event) => {
+    // event.preventDefault();
+    // event.stopPropagation();
+    const _event = event as SubmitEvent;
+    const submitter = _event.submitter;
+    if (submitter instanceof HTMLInputElement ) {
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: 'submit',
+        tagName: submitter.tagName,
+        textContent: submitter.value,
+        interactionContext: JSON.stringify({name: submitter.name, value: submitter.value}),
+        xpath: getXPath(submitter),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    }
+  })
+  destroyables.push(mousedownEvent);
 
   const dblclickEvent = new UserEvent(document.body, 'dblclick', (event) => {
     console.log('dblclick',)
@@ -434,19 +510,55 @@ function enable() {
   // });
 
   const changeEvent = new UserEvent(window, "change", (event) => {
-    const _target = event.target as HTMLInputElement;
-    if (_target) {
+    const _target = event.target;
+    if (_target instanceof HTMLInputElement) {
+      let name = _target.name;
+      if (_target.labels) {
+        name = _target.labels[0].innerText;
+      }
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
         type: event.type,
-        xpath: getXPath(_target)?? '',
-        tagName: _target.type ?? '',
+        xpath: getXPath(_target),
+        tagName: 'INPUT',
         textContent: _target.value,
-        interactionContext: JSON.stringify({name: _target.name, value: _target.value}),
+        interactionContext: JSON.stringify({type: _target.type, name: name, value: _target.value}),
         eventSource: 'MOUSE',
         width: window.innerWidth,
         height: window.innerHeight,
         enableCapture: enableCapture,
+      });
+    } else if (_target instanceof HTMLSelectElement) {
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: event.type,
+        xpath: getXPath(_target)?? '',
+        tagName: 'SELECT',
+        textContent: _target.value,
+        interactionContext: JSON.stringify({type: _target.type, name: _target.labels[0].innerText, value: _target.options[_target.selectedIndex].innerText}),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else if (_target instanceof HTMLTextAreaElement) {
+      let name = _target.name;
+      let value = _target.textContent;
+      if (_target.labels) {
+        name = _target.labels[0].innerText;
+      }
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: event.type,
+        xpath: getXPath(_target),
+        tagName: 'TEXTAREA',
+        textContent: value,
+        interactionContext: JSON.stringify({type: _target.type, name: name, value: value}),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+        shouldCapture: true,
       });
     }
   });
@@ -454,18 +566,21 @@ function enable() {
 
   const keyupEvent = new UserEvent(document.body, 'keyup', (event) => {
     const _event = event as KeyboardEvent;
-    let value = _event.target? (_event.target as HTMLInputElement).value : ''
-    let name = _event.target ? (_event.target as HTMLInputElement).name : null;
-    if (name === '') {
-      let classList = _event.target ? (_event.target as HTMLInputElement).classList : [];
-      if (classList.length) {
-        name = classList[0];
-      }
-      else {
-        name = null;
-      }
+
+    let value = '';
+    let name = null;
+
+    if (_event.target instanceof HTMLInputElement) {
+      value = _event.target.value;
+      name = _event.target.name;
+    } else if (_event.target instanceof HTMLTextAreaElement) {
+      value = _event.target.innerText;
+    } else if (_event.target instanceof HTMLDivElement){
+      value = _event.target.innerText;
+    } else {
+      name = (_event.target as HTMLElement).nodeName;
+      value = (_event.target as HTMLElement).innerText;
     }
-    if (name === null) { name = '' }
 
     chrome.runtime.sendMessage({
       messageType: 'TraceData',
@@ -488,8 +603,8 @@ function enable() {
       code: _event.code,
       key: _event.key,
       xpath: _event.target? getXPath(_event.target as Element) : '',
-      name: _event.target? (_event.target as HTMLInputElement).name ?? '': '',
-      value: _event.target? (_event.target as HTMLInputElement).value ?? '': '',
+      name: name?? undefined,
+      value: value,
     };
   })
   destroyables.push(keyupEvent)
@@ -518,6 +633,8 @@ function disable() {
   _lastScrollEvent = null;
 }
 
+console.log("init script>>>")
+
 const initContentScript = async() => {
   let contentScriptInjector = document.querySelector('content-scrpit')
   if (!contentScriptInjector) {
@@ -525,6 +642,7 @@ const initContentScript = async() => {
     document.body.appendChild(contentScriptInjector);
 
     let isLoggedIn = false;
+    enable();
     const messageEventHandler = async (event: MessageEvent) => {
       const { data } = event;
 
@@ -535,14 +653,14 @@ const initContentScript = async() => {
 
           port.onmessage = (event) => {
             const _data = event.data;
-            if (_data.loggedIn) {
-              isLoggedIn = true;
-              enable();
-            }
-            if (_data.loggedOut) {
-              isLoggedIn = false;
-              disable();
-            }
+            // if (_data.loggedIn) {
+            //   isLoggedIn = true;
+            //   enable();
+            // }
+            // if (_data.loggedOut) {
+            //   isLoggedIn = false;
+            //   disable();
+            // }
 
             if (_data.recording) {
               recordingSessionId = _data.recording.recordingSessionId;
@@ -573,9 +691,10 @@ const initContentScript = async() => {
     chrome.runtime.onMessage.addListener(onMessageReceived)
 
     const destoryHandler = async() => {
-      if (isLoggedIn) {
-        disable();
-      }
+      // if (isLoggedIn) {
+      //   disable();
+      // }
+      disable();
       // destroyables.forEach(instance => instance.destroy());
       const contentScriptInjector = document.querySelector('content-scrpit');
       if (contentScriptInjector) {
