@@ -44,7 +44,7 @@ export async function init() {
       contexts: ['action']
     })
     chrome.contextMenus.create({
-      title: 'Baseline',
+      title: 'ChatUI',
       parentId: mode_item,
       checked: mode.mode === 'Baseline',
       id: 'Baseline',

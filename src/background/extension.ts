@@ -463,8 +463,10 @@ export class Extension {
               const newValue = changes[key].newValue;
               const oldValue = changes[key].oldValue;
               if (newValue !== oldValue) {
+                const value = changes[key].newValue === 'Baseline' ? 'ChatUI' : changes[key].newValue;
+
                 chrome.contextMenus.update('parent', {
-                  title: changes[key].newValue,
+                  title: value,
                 })
                 chrome.contextMenus.update('Baseline', {
                   checked: newValue === 'Baseline' ? true : false,
