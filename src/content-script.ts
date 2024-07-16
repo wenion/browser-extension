@@ -681,7 +681,10 @@ const initContentScript = async() => {
     window.addEventListener('message', messageEventHandler);
 
     const onMessageReceived = (message: any, sender: chrome.runtime.MessageSender, sendResponse: ()=>void) => {
-      if (port){
+      if (!message.url || message.url != '') {
+        message.url = window.location.href
+      }
+      if (port) {
         while(_messageQueue.length > 0) {
           const message = _messageQueue.shift();
           if (message)
@@ -696,7 +699,7 @@ const initContentScript = async() => {
 
     chrome.runtime.onMessage.addListener(onMessageReceived)
 
-    const destoryHandler = async() => {
+    const destoryHandler = () => {
       // if (isLoggedIn) {
       //   disable();
       // }

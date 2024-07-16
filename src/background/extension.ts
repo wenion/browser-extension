@@ -511,6 +511,62 @@ export class Extension {
 
       chromeAPI.tabs.onRemoved.addListener(onTabRemoved);
 
+      chrome.tabs.onActivated.addListener((activeInfo) => {
+        if (state.isTabActive(activeInfo.tabId)) {
+          // send get focus
+          chrome.tabs.sendMessage(activeInfo.tabId, {
+            messageType: 'TraceData',
+            type: 'getfocus',
+            tagName: 'Switch',
+            textContent: 'onFocused',
+            interactionContext: '',
+            xpath: '',
+            eventSource: 'RESOURCE PAGE',
+          })
+          // send get unfocus
+          state.actUnfocusdTabs(activeInfo.tabId, (tabId: number)=>{
+            chrome.tabs.sendMessage(tabId, {
+              messageType: 'TraceData',
+              type: 'getfocus',
+              tagName: 'Switch',
+              textContent: 'onUnfocused',
+              interactionContext: '',
+              xpath: '',
+              eventSource: 'RESOURCE PAGE',
+            })
+          });
+        }
+      })
+
+      chrome.windows.onFocusChanged.addListener((windowId: number)=> {
+        // send get focus
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (result)=>{
+          if (result[0] && result[0].id && state.isTabActive(result[0].id)) {
+            chrome.tabs.sendMessage(result[0].id, {
+              messageType: 'TraceData',
+              type: 'getfocus',
+              tagName: 'Switch',
+              textContent: 'onFocused',
+              interactionContext: '',
+              xpath: '',
+              eventSource: 'RESOURCE PAGE',
+            })
+            // send get unfocus
+            state.actUnfocusdTabs(result[0].id, (tabId: number)=>{
+              chrome.tabs.sendMessage(tabId, {
+                messageType: 'TraceData',
+                type: 'getfocus',
+                tagName: 'Switch',
+                textContent: 'onUnfocused',
+                interactionContext: '',
+                xpath: '',
+                eventSource: 'RESOURCE PAGE',
+              })
+            });
+          }
+        })
+      })
+
       // Determine the state of the extension in existing tabs.
       await initTabStates();
     };

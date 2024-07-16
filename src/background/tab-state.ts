@@ -92,6 +92,14 @@ export class TabState {
     this.onchange = onchange;
   }
 
+  actUnfocusdTabs(activeId: number, callback: (tabId: number)=> void) {
+    this._currentState.forEach((value, key, map) => {
+      if(value.state === 'active' && key !== activeId) {
+        callback(key)
+      }
+    })
+  }
+
   /**
    * Mark a tab as having Hypothesis loaded in it.
    */
