@@ -60,7 +60,7 @@ export async function init() {
       contexts: ['action']
     })
     chrome.contextMenus.update('parent', {
-      title: mode.mode,
+      title: mode.mode === "Baseline"? "ChatUI" : "GoldMind",
     })
   });
 

@@ -240,11 +240,30 @@ async function setup(port: MessagePort) {
   navigate();
 }
 
+function getParentDiv(element: HTMLElement | null): HTMLElement | null {
+  while (element && element.nodeName.toLowerCase() !== 'div') {
+    element = element.parentElement;
+  }
+  return element; // This will return null if no <div> is found
+}
+
 function enable() {
   const clickEvent = new UserEvent(document.body, 'pointerdown', async (event) => {
     const _event = event as PointerEvent;
     const _target = _event.target;
+    let parent_target: HTMLDivElement | null = null;
+    let orgin_tag = '';
+
     if (_target instanceof HTMLInputElement) {
+      let name = _target.innerText;
+      if (_target.labels && _target.labels.length) {
+        console.log("_target.labels", _target.labels)
+        name = _target.labels[0].innerText;
+      }
+      if ((!name || name === '') && _target.textContent){
+        name = _target.textContent;
+      }
+      console.log("finial name", name)
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
         type: 'click',
@@ -252,7 +271,13 @@ function enable() {
         clientY: _event.clientY,
         tagName: _target.tagName,
         textContent: _target.textContent,
-        interactionContext: JSON.stringify({type: _target.type, name: _target.name, value: _target.value, inner_text: _target.innerText}),
+        interactionContext: JSON.stringify({
+          type: _target.type,
+          name: name,
+          value: _target.value,
+          inner_text: _target.innerText,
+          placeholder: _target.placeholder,
+        }),
         xpath: getXPath(_target),
         eventSource: 'MOUSE',
         width: window.innerWidth,
@@ -275,6 +300,71 @@ function enable() {
         enableCapture: enableCapture,
       });
     } else if (_target instanceof HTMLSelectElement) {
+      console.log('click HTMLSelectElement', _event)
+      if (_target.labels && _target.labels.length) {
+        chrome.runtime.sendMessage({
+          messageType: 'TraceData',
+          type: 'click',
+          clientX: _event.clientX,
+          clientY: _event.clientY,
+          tagName: _target.tagName,
+          textContent: _target.textContent,
+          interactionContext: JSON.stringify({
+            type: _target.type,
+            name: _target.labels[0].innerText,
+            value: _target.options[_target.selectedIndex].innerText,
+            inner_text: _target.innerText
+          }),
+          xpath: getXPath(_target),
+          eventSource: 'MOUSE',
+          width: window.innerWidth,
+          height: window.innerHeight,
+          enableCapture: enableCapture,
+        });
+      } else if (_target.options && _target.options.length) {
+        chrome.runtime.sendMessage({
+          messageType: 'TraceData',
+          type: 'click',
+          clientX: _event.clientX,
+          clientY: _event.clientY,
+          tagName: _target.tagName,
+          textContent: _target.textContent,
+          interactionContext: JSON.stringify({
+            type: _target.type,
+            name: _target.options[0].innerText,
+            value: _target.options[_target.selectedIndex].innerText,
+            inner_text: _target.innerText
+          }),
+          xpath: getXPath(_target),
+          eventSource: 'MOUSE',
+          width: window.innerWidth,
+          height: window.innerHeight,
+          enableCapture: enableCapture,
+        });
+      }
+    } else if (_target instanceof HTMLAnchorElement) {
+      console.log("HTMLAnchorElement", "innerText", _target.innerText, "_target.textContent", _target.textContent)
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: 'click',
+        clientX: _event.clientX,
+        clientY: _event.clientY,
+        tagName: _target.tagName,
+        textContent: _target.innerText,
+        interactionContext: JSON.stringify({
+          type: _target.type,
+          name: _target.innerText,
+          value: _target.href,
+          inner_text: _target.innerText,
+          text_content: _target.textContent
+        }),
+        xpath: getXPath(_target),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else if (_target instanceof HTMLButtonElement) {
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
         type: 'click',
@@ -282,54 +372,96 @@ function enable() {
         clientY: _event.clientY,
         tagName: _target.tagName,
         textContent: _target.textContent,
-        interactionContext: JSON.stringify({type: _target.type, name: _target.labels[0].innerText, value: _target.options[_target.selectedIndex].innerText, inner_text: _target.innerText}),
+        interactionContext: JSON.stringify({
+          type: _target.type,
+          name: _target.textContent,
+          value: _target.innerText,
+          inner_text: _target.innerText
+        }),
         xpath: getXPath(_target),
         eventSource: 'MOUSE',
         width: window.innerWidth,
         height: window.innerHeight,
         enableCapture: enableCapture,
       });
-    } else if (_target instanceof HTMLDivElement){
-      chrome.runtime.sendMessage({
-        messageType: 'TraceData',
-        type: 'click',
-        clientX: _event.clientX,
-        clientY: _event.clientY,
-        tagName: _target.tagName,
-        textContent: _target.textContent,
-        interactionContext: JSON.stringify({title: _target.title, name:_target.role, value: _target.textContent, inner_text: _target.innerText}),
-        xpath: getXPath(_target),
-        eventSource: 'MOUSE',
-        width: window.innerWidth,
-        height: window.innerHeight,
-        enableCapture: enableCapture,
-      });
+    } else if (_target instanceof SVGElement) {
+      orgin_tag = 'svg';
+      parent_target = _target.parentElement as HTMLDivElement;
+      while (parent_target && parent_target.nodeName.toLowerCase() !== 'div') {
+        parent_target = parent_target.parentElement as HTMLDivElement;
+      }
+      if (!parent_target.innerText || parent_target.innerText === '') {
+        let whatWeWant = null;
+        let nextSibling = parent_target.nextElementSibling;
+        while (nextSibling) {
+          if (nextSibling instanceof HTMLDivElement && nextSibling.innerText && nextSibling.innerText !== '') {
+            whatWeWant = nextSibling;
+            break;
+          }
+          nextSibling = nextSibling.nextElementSibling;
+        }
+
+        let previousSibling = whatWeWant? null : parent_target.previousElementSibling; // no need to find
+        while (previousSibling) {
+          if (previousSibling instanceof HTMLDivElement && previousSibling.innerText && previousSibling.innerText !== '') {
+            whatWeWant = previousSibling;
+            break;
+          }
+          previousSibling = previousSibling.nextElementSibling;
+        }
+
+        if (whatWeWant) {
+          console.log("whatWeWant", whatWeWant)
+          parent_target = whatWeWant;
+        }
+      }
+      console.log("svg parent_target", parent_target)
+
     } else if (_target instanceof HTMLElement) {
+      if (_target.innerText || _target.textContent) {
+        chrome.runtime.sendMessage({
+          messageType: 'TraceData',
+          type: 'click',
+          clientX: _event.clientX,
+          clientY: _event.clientY,
+          tagName: _target.tagName,
+          textContent: _target.textContent,
+          interactionContext: JSON.stringify({
+            name: _target.textContent,
+            value: _target.innerText,
+            inner_text: _target.innerText
+          }),
+          xpath: getXPath(_target),
+          eventSource: 'MOUSE',
+          width: window.innerWidth,
+          height: window.innerHeight,
+          enableCapture: enableCapture,
+        });
+      }
+      else {
+        orgin_tag = _target.tagName;
+        parent_target = getParentDiv(_target) as HTMLDivElement;
+        console.log("HTMLElement parent_target", parent_target)
+      }
+    }
+
+    if (parent_target && parent_target instanceof HTMLDivElement) {
+      console.log("here", parent_target, parent_target.textContent, parent_target.innerText)
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
         type: 'click',
         clientX: _event.clientX,
         clientY: _event.clientY,
-        tagName: _target.tagName,
-        textContent: _target.textContent,
-        interactionContext: JSON.stringify({name: _target.nodeName, value: _target.nodeValue, inner_text: _target.innerText}),
-        xpath: getXPath(_target),
-        eventSource: 'MOUSE',
-        width: window.innerWidth,
-        height: window.innerHeight,
-        enableCapture: enableCapture,
-      });
-    } else {
-      const element = _target as Element;
-      chrome.runtime.sendMessage({
-        messageType: 'TraceData',
-        type: 'click',
-        clientX: _event.clientX,
-        clientY: _event.clientY,
-        tagName: element.tagName,
-        textContent: element.textContent,
-        interactionContext: JSON.stringify({type: element.nodeType, name: element.nodeName, value: element.nodeValue}),
-        xpath: getXPath(element),
+        tagName: parent_target.tagName,
+        textContent: parent_target.textContent,
+        interactionContext: JSON.stringify({
+          title: parent_target.title,
+          name:parent_target.role,
+          value: parent_target.textContent,
+          inner_text: parent_target.innerText,
+          origin: orgin_tag,
+        }),
+        xpath: getXPath(parent_target),
         eventSource: 'MOUSE',
         width: window.innerWidth,
         height: window.innerHeight,
@@ -511,11 +643,13 @@ function enable() {
 
   const changeEvent = new UserEvent(window, "change", (event) => {
     const _target = event.target;
+    console.log('change', event, _target)
     if (_target instanceof HTMLInputElement) {
       let name = _target.name;
-      if (_target.labels) {
+      if (_target.labels && _target.labels[0]) {
         name = _target.labels[0].innerText;
       }
+      console.log("change finial name", name)
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
         type: event.type,
