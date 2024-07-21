@@ -573,20 +573,60 @@ function enable() {
 
   const dropEvent = new UserEvent(document.body, 'drop', (event) => {
     const _event = event as DragEvent;
-    chrome.runtime.sendMessage({
-      messageType: 'TraceData',
-      type: _event.type,
-      clientX: _event.clientX,
-      clientY: _event.clientY,
-      tagName: (_event.target as Element).tagName ?? (_event.target as Node).nodeName ?? '',
-      textContent: (_event.target as Text).data ?? (_event.target as Element).outerHTML ?? '',
-      xpath: _event.target? getXPath(_event.target as Element) : '',
-      interactionContext: '',
-      eventSource: 'MOUSE',
-      width: window.innerWidth,
-      height: window.innerHeight,
-      enableCapture: enableCapture,
-    });
+    const _target = event.target;
+    console.log("drop", _event)
+
+
+    if (_target instanceof HTMLInputElement) {
+      let name = _target.name;
+      if (_target.labels && _target.labels[0]) {
+        name = _target.labels[0].innerText;
+      }
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: event.type,
+        xpath: getXPath(_target),
+        tagName: 'INPUT',
+        textContent: _target.value,
+        interactionContext: JSON.stringify({type: _target.type, name: name, value: _target.value, inner_text: _target.innerText}),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else if (_target instanceof HTMLDivElement) {
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: 'click',
+        clientX: _event.clientX,
+        clientY: _event.clientY,
+        tagName: _target.tagName,
+        textContent: _target.textContent,
+        interactionContext: JSON.stringify({
+          title: _target.title,
+          name:_target.role,
+          value: _target.textContent,
+          inner_text: _target.innerText,
+        }),
+        xpath: getXPath(_target),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else {
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: _event.type,
+        clientX: _event.clientX,
+        clientY: _event.clientY,
+        tagName: (_event.target as Element).tagName ?? (_event.target as Node).nodeName ?? '',
+        textContent: (_event.target as Text).data ?? (_event.target as Element).outerHTML ?? '',
+        xpath: _event.target? getXPath(_event.target as Element) : '',
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    }
     lastEvent = {type: event.type, timeStamp: _event.timeStamp};
    })
    destroyables.push(dropEvent);
@@ -634,6 +674,44 @@ function enable() {
 
   const pasteEvent = new UserEvent(window, "paste", (event) => {
     console.log("paste", event)
+    const _event = event as ClipboardEvent;
+    const _target = _event.target;
+    if (_target instanceof HTMLTextAreaElement) {
+      let name = 'Textarea';
+      if (_target.labels && _target.labels[0]) {
+        name = _target.labels[0].innerText;
+      }
+      let value = _target.value;
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: event.type,
+        xpath: getXPath(_target),
+        tagName: 'TEXTAREA',
+        textContent: value,
+        interactionContext: JSON.stringify({type: _target.type, name: name, value: value}),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    } else if (_target instanceof HTMLInputElement) {
+      let name = _target.name;
+      if (_target.labels && _target.labels[0]) {
+        name = _target.labels[0].innerText;
+      }
+      chrome.runtime.sendMessage({
+        messageType: 'TraceData',
+        type: event.type,
+        xpath: getXPath(_target),
+        tagName: 'INPUT',
+        textContent: _target.value,
+        interactionContext: JSON.stringify({type: _target.type, name: name, value: _target.value}),
+        eventSource: 'MOUSE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+        enableCapture: enableCapture,
+      });
+    }
   });
   destroyables.push(pasteEvent)
 
@@ -649,19 +727,34 @@ function enable() {
       if (_target.labels && _target.labels[0]) {
         name = _target.labels[0].innerText;
       }
-      console.log("change finial name", name)
-      chrome.runtime.sendMessage({
-        messageType: 'TraceData',
-        type: event.type,
-        xpath: getXPath(_target),
-        tagName: 'INPUT',
-        textContent: _target.value,
-        interactionContext: JSON.stringify({type: _target.type, name: name, value: _target.value}),
-        eventSource: 'MOUSE',
-        width: window.innerWidth,
-        height: window.innerHeight,
-        enableCapture: enableCapture,
-      });
+      if (_target.type == "checkbox") {
+        chrome.runtime.sendMessage({
+          messageType: 'TraceData',
+          type: event.type,
+          xpath: getXPath(_target),
+          tagName: 'INPUT',
+          textContent: _target.checked,
+          interactionContext: JSON.stringify({type: _target.type, name: name, value: _target.checked}),
+          eventSource: 'MOUSE',
+          width: window.innerWidth,
+          height: window.innerHeight,
+          enableCapture: enableCapture,
+        });
+      }
+      else {
+        chrome.runtime.sendMessage({
+          messageType: 'TraceData',
+          type: event.type,
+          xpath: getXPath(_target),
+          tagName: 'INPUT',
+          textContent: _target.value,
+          interactionContext: JSON.stringify({type: _target.type, name: name, value: _target.value}),
+          eventSource: 'MOUSE',
+          width: window.innerWidth,
+          height: window.innerHeight,
+          enableCapture: enableCapture,
+        });
+      }
     } else if (_target instanceof HTMLSelectElement) {
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
@@ -676,11 +769,13 @@ function enable() {
         enableCapture: enableCapture,
       });
     } else if (_target instanceof HTMLTextAreaElement) {
-      let name = _target.name;
-      let value = _target.textContent;
-      if (_target.labels) {
+      let name = 'Textarea';
+      let value = _target.value;
+      console.log('change HTMLTextAreaElement', event, _target)
+      if (_target.labels && _target.labels[0]) {
         name = _target.labels[0].innerText;
       }
+      console.log('change HTMLTextAreaElement name', name, value)
       chrome.runtime.sendMessage({
         messageType: 'TraceData',
         type: event.type,
@@ -699,6 +794,7 @@ function enable() {
   destroyables.push(changeEvent)
 
   const keyupEvent = new UserEvent(document.body, 'keyup', (event) => {
+    console.log("keyup event")
     const _event = event as KeyboardEvent;
 
     let value = '';
