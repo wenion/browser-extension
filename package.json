@@ -17,7 +17,7 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-multi-entry": "^6.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "@types/chrome": "^0.0.254",
+    "@types/chrome": "^0.0.271",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "babel-plugin-istanbul": "^6.1.1",
@@ -47,6 +47,7 @@
     "prettier": "3.1.1",
     "rollup": "^4.9.1",
     "sinon": "^17.0.1",
+    "tiny-emitter": "^2.0.2",
     "typescript": "^5.3.3",
     "web-ext": "^7.9.0"
   },

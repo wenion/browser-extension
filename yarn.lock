@@ -2448,13 +2448,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/chrome@npm:^0.0.254":
-  version: 0.0.254
-  resolution: "@types/chrome@npm:0.0.254"
+"@types/chrome@npm:^0.0.271":
+  version: 0.0.271
+  resolution: "@types/chrome@npm:0.0.271"
   dependencies:
     "@types/filesystem": "*"
     "@types/har-format": "*"
-  checksum: ec54e73b792eb93cdadead294a0de0f757cc30d8ddebabab548cbfd3ed479c2a557aa33cee6eb190b67f500eebbc2e09496017a1dd521df1154a7b38cdca70d3
+  checksum: 4cd42a31e02464b353f87311694e9b6905b4a62add7a1a192b3081d1f66d9c9d2ca527eea5f809987f2d55b196b18d68070591ddce2d89c87142d7080fa51788
   languageName: node
   linkType: hard
 
@@ -7084,7 +7084,7 @@ __metadata:
     "@rollup/plugin-json": ^6.1.0
     "@rollup/plugin-multi-entry": ^6.0.1
     "@rollup/plugin-node-resolve": ^15.2.3
-    "@types/chrome": ^0.0.254
+    "@types/chrome": ^0.0.271
     "@typescript-eslint/eslint-plugin": ^6.14.0
     "@typescript-eslint/parser": ^6.14.0
     babel-plugin-istanbul: ^6.1.1
@@ -7114,6 +7114,7 @@ __metadata:
     prettier: 3.1.1
     rollup: ^4.9.1
     sinon: ^17.0.1
+    tiny-emitter: ^2.0.2
     typescript: ^5.3.3
     web-ext: ^7.9.0
   languageName: unknown
@@ -12181,6 +12182,13 @@ __metadata:
   version: 1.1.0
   resolution: "time-stamp@npm:1.1.0"
   checksum: 4c46e9739dab997fa8ba787c644cb2b9ea9867eb281acbbb8ba23c4f5edcbe8cc16f0aa5b7981a4c96df76b99dd1f54b0895865c15f3c0e49d1edd8c208717fd
+  languageName: node
+  linkType: hard
+
+"tiny-emitter@npm:^2.0.2":
+  version: 2.1.0
+  resolution: "tiny-emitter@npm:2.1.0"
+  checksum: fbcfb5145751a0e3b109507a828eb6d6d4501352ab7bb33eccef46e22e9d9ad3953158870a6966a59e57ab7c3f9cfac7cab8521db4de6a5e757012f4677df2dd
   languageName: node
   linkType: hard
 
