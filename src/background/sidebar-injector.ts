@@ -450,9 +450,6 @@ export class SidebarInjector {
       if (!isSupportedURL(tab.url)) {
         return;
       }
-      chrome.tabs.sendMessage(tab.id, {
-        remove: true,
-      })
       await executeScript({
         tabId: tab.id,
         files: ['/unload-client.js', '/unload-content-script.js'],

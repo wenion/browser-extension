@@ -432,15 +432,6 @@ export class Extension {
             onBrowserActionClicked(tab);
           }
         }
-        else {
-          chrome.storage.sync.set({mode: item.menuItemId})
-          const isActivate = state.isTabActive(tab.id);
-          if (isActivate) {
-            chrome.tabs.sendMessage(tab.id, {
-              mode: item.menuItemId,
-            })
-          }
-        }
       });
 
       chrome.storage.onChanged.addListener((changes, area) =>{
@@ -458,29 +449,6 @@ export class Extension {
                   contexts: ['all']
                 });
               }
-            }
-            else if ( key === 'mode') {
-              const newValue = changes[key].newValue;
-              const oldValue = changes[key].oldValue;
-              if (newValue !== oldValue) {
-                const value = changes[key].newValue === 'Baseline' ? 'ChatUI' : changes[key].newValue;
-
-                chrome.contextMenus.update('parent', {
-                  title: value,
-                })
-                chrome.contextMenus.update('Baseline', {
-                  checked: newValue === 'Baseline' ? true : false,
-                });
-                chrome.contextMenus.update('GoldMind', {
-                  checked: newValue === 'GoldMind' ? true : false,
-                });
-              }
-            }
-            else if (key === 'model') {
-              chrome.runtime.restart();
-            }
-            else if (key === 'token') {
-              chrome.runtime.restart();
             }
           }
         }
@@ -524,9 +492,9 @@ export class Extension {
             interactionContext: '',
             xpath: '',
             eventSource: 'RESOURCE PAGE',
-          })
+          });
           // send get unfocus
-          state.actUnfocusdTabs(activeInfo.tabId, (tabId: number)=>{
+          state.onUnfocusdTabsChanged(activeInfo.tabId, (tabId: number)=>{
             chrome.tabs.sendMessage(tabId, {
               messageType: 'TraceData',
               type: 'getfocus',
@@ -535,7 +503,7 @@ export class Extension {
               interactionContext: '',
               xpath: '',
               eventSource: 'RESOURCE PAGE',
-            })
+            });
           });
         }
       })
@@ -552,9 +520,8 @@ export class Extension {
               interactionContext: '',
               xpath: '',
               eventSource: 'RESOURCE PAGE',
-            })
-            // send get unfocus
-            state.actUnfocusdTabs(result[0].id, (tabId: number)=>{
+            });
+            state.onUnfocusdTabsChanged(result[0].id, (tabId: number)=>{
               chrome.tabs.sendMessage(tabId, {
                 messageType: 'TraceData',
                 type: 'getfocus',
@@ -563,7 +530,7 @@ export class Extension {
                 interactionContext: '',
                 xpath: '',
                 eventSource: 'RESOURCE PAGE',
-              })
+              });
             });
           }
         })

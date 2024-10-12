@@ -1,196 +1,40 @@
-/**
- * Test whether an iframe fills the viewport of an ancestor frame.
- */
-function getFullXPath(node: Element) {
-  return xPath(node, false)
-}
+import { getCustomsContainingNode } from './highlighter';
+import type { Destroyable } from './types/annotator';
+import { ListenerCollection } from './shared/listener-collection';
+import { PortRPC } from './shared/messaging/port-rpc';
+import { isMessage } from './shared/messaging/port-util';
+import type {
+  ExtensionToSidebarEvent,
+  SidebarToExtensionEvent,
+} from './types/extension-port-rpc-events';
+import { getXPath } from './xpath';
 
-function getXPath(node: Element) {
-  return xPath(node)
-}
-
-class Step {
-  public value: string;
-  public optimized: boolean;
-  constructor(value: string, optimized: boolean) {
-    this.value = value;
-    this.optimized = optimized || false;
-  }
-
-  /**
-   * @override
-   * @return {string}
-   */
-  toString() {
-    return this.value;
-  }
-};
-
-function xPath(node: Element, optimized: boolean = true) {
-  if (node.nodeType === Node.DOCUMENT_NODE)
-    return '/';
-
-  const steps = [];
-  let contextNode = node;
-  while (contextNode) {
-    const step = _xPathValue(contextNode, optimized);
-    if (!step)
-      break;  // Error - bail out early.
-    steps.push(step);
-    if (step.optimized)
-      break;
-    contextNode = contextNode.parentNode as Element;
-  }
-
-  steps.reverse();
-  return (steps.length && steps[0].optimized ? '' : '/') + steps.join('/');
-};
-
-function _xPathValue(node: Element, optimized: boolean) {
-  let ownValue;
-  const ownIndex = _xPathIndex(node);
-  if (ownIndex === -1)
-    return null;  // Error.
-
-  switch (node.nodeType) {
-    case Node.ELEMENT_NODE:
-      if (optimized && node.getAttribute('id'))
-        return new Step('//*[@id="' + node.getAttribute('id') + '"]', true);
-      ownValue = node.localName;
-      break;
-    case Node.ATTRIBUTE_NODE:
-      ownValue = '@' + node.nodeName;
-      break;
-    case Node.TEXT_NODE:
-    case Node.CDATA_SECTION_NODE:
-      ownValue = 'text()';
-      break;
-    case Node.PROCESSING_INSTRUCTION_NODE:
-      ownValue = 'processing-instruction()';
-      break;
-    case Node.COMMENT_NODE:
-      ownValue = 'comment()';
-      break;
-    case Node.DOCUMENT_NODE:
-      ownValue = '';
-      break;
-    default:
-      ownValue = '';
-      break;
-  }
-
-  if (ownIndex > 0)
-    ownValue += '[' + ownIndex + ']';
-
-  return new Step(ownValue, node.nodeType === Node.DOCUMENT_NODE);
-};
-
-function _xPathIndex(node: Element) {
-  // Returns -1 in case of error, 0 if no siblings matching the same expression, <XPath index among the same expression-matching sibling nodes> otherwise.
-  function areNodesSimilar(left: Element, right: Element) {
-    if (left === right)
-      return true;
-
-    if (left.nodeType === Node.ELEMENT_NODE && right.nodeType === Node.ELEMENT_NODE)
-      return left.localName === right.localName;
-
-    if (left.nodeType === right.nodeType)
-      return true;
-
-    // XPath treats CDATA as text nodes.
-    const leftType = left.nodeType === Node.CDATA_SECTION_NODE ? Node.TEXT_NODE : left.nodeType;
-    const rightType = right.nodeType === Node.CDATA_SECTION_NODE ? Node.TEXT_NODE : right.nodeType;
-    return leftType === rightType;
-  }
-
-  const siblings = node.parentNode ? node.parentNode.children : null;
-  if (!siblings)
-    return 0;  // Root node - no siblings.
-  let hasSameNamedElements;
-  for (let i = 0; i < siblings.length; ++i) {
-    if (areNodesSimilar(node, siblings[i]) && siblings[i] !== node) {
-      hasSameNamedElements = true;
-      break;
-    }
-  }
-  if (!hasSameNamedElements)
-    return 0;
-  let ownIndex = 1;  // XPath indices start with 1.
-  for (let i = 0; i < siblings.length; ++i) {
-    if (areNodesSimilar(node, siblings[i])) {
-      if (siblings[i] === node)
-        return ownIndex;
-      ++ownIndex;
-    }
-  }
-  return -1;  // An error occurred: |node| not found in parent's children.
-};
-
-const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
-
-type HighlightProps = {
-  // Associated SVG rect drawn to represent this highlight (in PDFs)
-  svgHighlight?: SVGRectElement;
-};
-
-type HighlightElement = HTMLElement & HighlightProps;
-type AnnotationHighlight = HTMLElement & { _annotation?: {$tag: string;} };
-
-function getCustomsContainingNode(node: Node): HighlightElement[] {
-  let el =
-    node.nodeType === Node.ELEMENT_NODE
-      ? (node as Element)
-      : node.parentElement;
-
-  const highlights = [];
-
-  while (el) {
-    if (el.classList.contains('hypothesis-highlight') && el.classList.contains('custom-content')) {
-      highlights.push(el);
-    }
-    el = el.parentElement;
-  }
-
-  return highlights as HighlightElement[];
-}
-
-function generateRandomString(length: number): string {
-  const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let result = '';
-
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    result += characters[randomIndex];
-  }
-
-  return result;
-}
-
-type Destroyable = {
-  destroy(): void;
-};
 
 class UserEvent implements Destroyable {
   private _element: HTMLElement | Window;
   private _event: string;
   private _handler: (e: Event) => void;
 
-  constructor(element: HTMLElement | Window, event: string, handler: (e: Event) => void) {
+  constructor(
+    element: HTMLElement | Window,
+    event: string,
+    handler: (e: Event) => void
+  ) {
     this._element = element;
     this._event = event;
     this._handler = handler;
 
-    // effect
     this._element.addEventListener(this._event, this._handler);
   }
 
-  destroy(): void {
+  destroy() {
     this._element.removeEventListener(this._event, this._handler);
   }
 }
 
 const destroyables = [] as Destroyable[];
-let lastEvent : {
+
+var lastEvent : {
   type: string,
   timeStamp: number,
   scrollX?: number,
@@ -202,22 +46,10 @@ let lastEvent : {
   code?: string,
   key?: string,
 } = {type: 'initial', timeStamp: 0};
-let lastPointerdownEvent = {type: 'pointerdown', timeStamp: 0, clientX: 0, clientY: 0}
+
 let lastSelectEvent = '';
 let _lastScrollEvent: {timeStamp: number, scrollX: number, scrollY: number} | null = null;
-
-let port: MessagePort | null = null;
-let _messageQueue: object[] = [];
 let enableCapture = false;
-let recordingSessionId = '';
-let recordingTaskName = '';
-
-function send(port: MessagePort, message: object) {
-  const id = generateRandomString(12)
-  const _message = Object.assign(message, {source: 'extension', id:id})
-
-  port.postMessage(_message)
-}
 
 function navigate() {
   chrome.runtime.sendMessage({
@@ -230,14 +62,8 @@ function navigate() {
     eventSource: 'RESOURCE PAGE',
     width: window.innerWidth,
     height: window.innerHeight,
-    enableCapture: enableCapture,
+    enableCapture: true,
   });
-}
-
-async function setup(port: MessagePort) {
-  const env = await chrome.storage.sync.get(['mode', 'model', 'token',]);
-  send(port, {...env, recording:'request'});
-  navigate();
 }
 
 function getParentDiv(element: HTMLElement | null): HTMLElement | null {
@@ -249,6 +75,7 @@ function getParentDiv(element: HTMLElement | null): HTMLElement | null {
 
 function enable() {
   const clickEvent = new UserEvent(document.body, 'pointerdown', async (event) => {
+    console.log("clickEvent >>>>", clickEvent)
     const _event = event as PointerEvent;
     const _target = _event.target;
     let parent_target: HTMLDivElement | null = null;
@@ -468,7 +295,6 @@ function enable() {
         enableCapture: enableCapture,
       });
     }
-    lastPointerdownEvent = {type: _event.type, timeStamp: _event.timeStamp, clientX: _event.clientX, clientY: _event.clientY};
   })
   destroyables.push(clickEvent)
 
@@ -840,6 +666,7 @@ function enable() {
   destroyables.push(keyupEvent)
 
   const beforeunloadEvent = new UserEvent(window, 'beforeunload', (event) => {
+    console.log("before >>>>", beforeunloadEvent)
     chrome.runtime.sendMessage({
       messageType: 'TraceData',
       type: event.type,
@@ -853,95 +680,115 @@ function enable() {
       enableCapture: enableCapture,
     });
     lastEvent = {type: event.type, timeStamp: event.timeStamp};
+    // sleep(1000);
   })
   destroyables.push(beforeunloadEvent)
 }
 
 function disable() {
+  // clear register events
   destroyables.forEach(instance => instance.destroy());
   destroyables.splice(0, destroyables.length)
   _lastScrollEvent = null;
 }
 
-console.log("init script>>>")
+class ContentService {
+  _sidebarRPC : PortRPC<SidebarToExtensionEvent, ExtensionToSidebarEvent>;
+  private _listeners: ListenerCollection;
+
+  constructor() {
+    this._sidebarRPC = new PortRPC();
+    this._listeners = new ListenerCollection();
+    this._setupExtensionEvent();
+  }
+
+  private _setupExtensionEvent() {
+    this._sidebarRPC.on("connect", (data) => {
+      const status = JSON.parse(data);
+      enableCapture = status.recordingStatus === 'on' ? true : false;
+    });
+    this._sidebarRPC.on('recording', (data) => {
+      enableCapture = data.recordingStatus === 'on' ? true : false;
+    });
+    this._sidebarRPC.on('close', () => {
+      console.log('sidebar close')
+    });
+  }
+
+  async connect() {
+    const listenerId = this._listeners.add(window, 'message', event => {
+      const { data, ports } = event;
+
+      if (
+        !isMessage(data) ||
+        data.frame2 !== 'extension' ||
+        data.type === 'request' 
+      ) {
+        return;
+      }
+
+      this._sidebarRPC.connect(ports[0]);
+      this._listeners.remove(listenerId);
+    })
+  }
+
+  forwardMessage(message: any) {
+    this._sidebarRPC.call("traceData", message);
+  }
+
+  destroy() {
+    this._sidebarRPC.destroy();
+    this._listeners.removeAll();
+  }
+}
+
+
+console.log("init script>>>", new Date())
 
 const initContentScript = async() => {
-  const _messageQueue : object[] = [];
   let contentScriptInjector = document.querySelector('content-scrpit')
   if (!contentScriptInjector) {
     contentScriptInjector = document.createElement('content-scrpit');
     document.body.appendChild(contentScriptInjector);
 
-    let isLoggedIn = false;
+    let content = new ContentService();
+    content.connect();
     enable();
-    const messageEventHandler = async (event: MessageEvent) => {
-      const { data } = event;
 
-      if (data.frame1 === 'sidebar' && data.frame2 === 'extension' && data.type === 'request') {
-        port = event.ports[0];
-        if (port) {
-          setup(port);
-
-          port.onmessage = (event) => {
-            const _data = event.data;
-            // if (_data.loggedIn) {
-            //   isLoggedIn = true;
-            //   enable();
-            // }
-            // if (_data.loggedOut) {
-            //   isLoggedIn = false;
-            //   disable();
-            // }
-
-            if (_data.recording) {
-              recordingSessionId = _data.recording.recordingSessionId;
-              recordingTaskName = _data.recording.recordingTaskName;
-              enableCapture = _data.recording.recordingStatus === 'on' ? true : false;
-              if (enableCapture) navigate();
-            }
-
-            if (_data.mode) {
-              chrome.storage.sync.set({mode: _data.mode})
-            }
-          }
-          window.removeEventListener('message', messageEventHandler);
-        }
-      }
-    }
-    window.addEventListener('message', messageEventHandler);
-
-    const onMessageReceived = (message: any, sender: chrome.runtime.MessageSender, sendResponse: ()=>void) => {
+    const onMessageReceived = async (
+      message: any,
+      sender: chrome.runtime.MessageSender,
+      sendResponse: (response: any) => void
+    ) => {
       if (!message.url || message.url != '') {
         message.url = window.location.href
       }
-      if (port) {
-        while(_messageQueue.length > 0) {
-          const message = _messageQueue.shift();
-          if (message)
-            send(port, message);
-        }
-        send(port, message);
+
+      console.log("on receive!!!!!!", message.messageType, message.type)
+      switch (message.messageType) {
+        case 'TraceData':
+          content.forwardMessage(message); 
+          break;
+        case 'CmdData':
+          break;
       }
-      else {
-        _messageQueue.push(message);
-      }
+
+      return true;
     }
 
     chrome.runtime.onMessage.addListener(onMessageReceived)
+    // TODO
+    navigate();
 
     const destoryHandler = () => {
-      // if (isLoggedIn) {
-      //   disable();
-      // }
-      disable();
-      // destroyables.forEach(instance => instance.destroy());
       const contentScriptInjector = document.querySelector('content-scrpit');
       if (contentScriptInjector) {
         contentScriptInjector.removeEventListener('destroy', destoryHandler)
         contentScriptInjector.remove();
       }
-
-      chrome.runtime.onMessage.removeListener(onMessageReceived)
+      disable();
+      content.destroy();
+      chrome.runtime.onMessage.removeListener(onMessageReceived);
     }
     contentScriptInjector.addEventListener('destroy', destoryHandler)
   }

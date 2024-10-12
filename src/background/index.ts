@@ -33,39 +33,9 @@ export async function init() {
       id: alwaysOn ? 'Disable Always On': 'Always On',
       contexts: ['all']
     });
-
-    const mode = await chrome.storage.sync.get('mode');
-    if (!mode.mode) {
-      await chrome.storage.sync.set({mode: 'Baseline'});
-    }
-    let mode_item = chrome.contextMenus.create({
-      title: 'Select Mode',
-      id: 'parent',
-      contexts: ['action']
-    })
-    chrome.contextMenus.create({
-      title: 'ChatUI',
-      parentId: mode_item,
-      checked: mode.mode === 'Baseline',
-      id: 'Baseline',
-      type: 'radio',
-      contexts: ['action']
-    })
-    chrome.contextMenus.create({
-      title: 'GoldMind',
-      parentId: mode_item,
-      checked: mode.mode === 'GoldMind',
-      id: 'GoldMind',
-      type: 'radio',
-      contexts: ['action']
-    })
-    chrome.contextMenus.update('parent', {
-      title: mode.mode === "Baseline"? "ChatUI" : "GoldMind",
-    })
   });
 
   chrome.runtime.onMessage.addListener(async(message, sender, sendResponse) => {
-    // cache
     if (!sender.tab?.id || !sender.tab?.url) {
       return
     }
@@ -84,6 +54,9 @@ export async function init() {
       const screenshotUrl = await chrome.tabs.captureVisibleTab();
       _message.image = screenshotUrl;
     }
+
+    _message.tabId = sender.tab.id;
+    _message.windowId = sender.tab.windowId;
 
     chrome.tabs.sendMessage(sender.tab.id, _message);
   });

@@ -77,12 +77,10 @@ build/client/profile.html: build/client/app.html
 	cp $< $@
 build/unload-client.js: src/unload-client.js
 	cp $< $@
+build/content-script: src/unload-content-script.js
+	cp $< build/
 build/pdfjs-%.js: src/pdfjs-%.js
 	cp $< $@
-build/content-script: src/content-script.ts
-	$(TSC) $<
-	cp src/content-script.js build/
-	cp src/unload-content-script.js build/
 build/pdfjs: src/vendor/pdfjs
 	cp -R $< $@
 	cp src/content-script.js build/pdfjs/web
