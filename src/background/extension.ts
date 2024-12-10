@@ -196,6 +196,12 @@ export class Extension {
         help.showHelpForError(tab, tabError);
       } else if (state.isTabActive(tabId)) {
         state.deactivateTab(tabId);
+
+        chrome.tabs.sendMessage(tabId, {
+          messageType: 'CmdData',
+          event: 'chrome.action.onClicked',
+          value: false,
+        })
       } else {
         // Immediately request additional permissions we may need for this
         // specific tab, before any async calls. See notes in
@@ -204,6 +210,12 @@ export class Extension {
         // eslint-disable-next-line no-lonely-if
         if (await sidebarInjector.requestExtraPermissionsForTab(tab)) {
           state.activateTab(tabId);
+
+          chrome.tabs.sendMessage(tabId, {
+            messageType: 'CmdData',
+            event: 'chrome.action.onClicked',
+            value: true,
+          })
         } else {
           state.errorTab(
             tabId,
@@ -297,6 +309,25 @@ export class Extension {
         if (response.alwaysOn && status === 'complete' && !state.isTabActive(tabId)) {
           onBrowserActionClicked(tab);
         }
+      });
+
+      chrome.tabs.sendMessage(tabId, {
+        messageType: 'TraceData',
+        type: 'getfocus',
+        custom: 'switch to',
+        tagName: 'Switch',
+        label: '',
+        textContent: 'onFocused',
+        interactionContext: '',
+        xpath: '',
+        eventSource: 'TABS',
+        width: tab.width?? 0,
+        height: tab.height?? 0,
+        url: tab.url ?? '',
+        tabId: tabId,
+        windowId: tab.windowId,
+        timestamp: Date.now(),
+        image: '',
       });
     };
 
@@ -481,56 +512,27 @@ export class Extension {
 
       chromeAPI.tabs.onRemoved.addListener(onTabRemoved);
 
-      chrome.tabs.onActivated.addListener((activeInfo) => {
-        if (state.isTabActive(activeInfo.tabId)) {
-          // send get focus
-          chrome.tabs.sendMessage(activeInfo.tabId, {
-            messageType: 'TraceData',
-            type: 'getfocus',
-            tagName: 'Switch',
-            textContent: 'onFocused',
-            interactionContext: '',
-            xpath: '',
-            eventSource: 'RESOURCE PAGE',
-          });
-          // send get unfocus
-          state.onUnfocusdTabsChanged(activeInfo.tabId, (tabId: number)=>{
-            chrome.tabs.sendMessage(tabId, {
-              messageType: 'TraceData',
-              type: 'getfocus',
-              tagName: 'Switch',
-              textContent: 'onUnfocused',
-              interactionContext: '',
-              xpath: '',
-              eventSource: 'RESOURCE PAGE',
-            });
-          });
-        }
-      })
-
       chrome.windows.onFocusChanged.addListener((windowId: number)=> {
         // send get focus
         chrome.tabs.query({ active: true, lastFocusedWindow: true }, (result)=>{
-          if (result[0] && result[0].id && state.isTabActive(result[0].id)) {
+          if (result.length > 0 && result[0].id && state.isTabActive(result[0].id)) {
             chrome.tabs.sendMessage(result[0].id, {
               messageType: 'TraceData',
               type: 'getfocus',
+              custom: 'switch to',
               tagName: 'Switch',
+              label: '',
               textContent: 'onFocused',
               interactionContext: '',
               xpath: '',
-              eventSource: 'RESOURCE PAGE',
-            });
-            state.onUnfocusdTabsChanged(result[0].id, (tabId: number)=>{
-              chrome.tabs.sendMessage(tabId, {
-                messageType: 'TraceData',
-                type: 'getfocus',
-                tagName: 'Switch',
-                textContent: 'onUnfocused',
-                interactionContext: '',
-                xpath: '',
-                eventSource: 'RESOURCE PAGE',
-              });
+              eventSource: 'WINDOWS',
+              width: 0,
+              height: 0,
+              url: result[0].url,
+              tabId: result[0].id,
+              windowId: windowId,
+              timestamp: Date.now(),
+              image: '',
             });
           }
         })

@@ -169,14 +169,14 @@ export const chromeAPI = getChromeAPI();
 export type ExecuteScriptOptions = {
   tabId: number;
   frameId?: number;
-  files: string[];
+  file: string;
 };
 
 /**
  * Execute a JavaScript file within a tab.
  */
 export async function executeScript(
-  { tabId, frameId, files}: ExecuteScriptOptions,
+  { tabId, frameId, file }: ExecuteScriptOptions,
   chromeAPI_ = chromeAPI,
 ): Promise<unknown> {
   const target: chrome.scripting.InjectionTarget = { tabId };
@@ -185,7 +185,7 @@ export async function executeScript(
   }
   const results = await chromeAPI_.scripting.executeScript({
     target,
-    files: [...files],
+    files: [file],
   });
   return results[0].result;
 }

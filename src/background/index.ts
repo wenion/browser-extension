@@ -1,6 +1,13 @@
 import { chromeAPI } from './chrome-api';
 import { Extension } from './extension';
 import type { ExternalMessage } from './messages';
+import type {
+  TraceMeta,
+  ClickTraceMeta,
+  KeyTraceMeta,
+  ScrollTraceMeta,
+  ChangeTraceMetaMeta,
+} from '../content-script/types/basic';
 
 /**
  * Initialize the extension's Service Worker / background page.
@@ -35,31 +42,48 @@ export async function init() {
     });
   });
 
-  chrome.runtime.onMessage.addListener(async(message, sender, sendResponse) => {
-    if (!sender.tab?.id || !sender.tab?.url) {
-      return
-    }
+  chrome.runtime.onMessage.addListener(
+    async (
+      message: (TraceMeta | ClickTraceMeta | KeyTraceMeta | ScrollTraceMeta | ChangeTraceMetaMeta) & {screenCapture: boolean},
+      sender,
+      sendResponse
+    ) => {
+      if (!sender.tab?.id || !sender.tab?.url) {
+        return
+      }
 
-    const _message = Object.assign(message, {url: sender.tab.url});
-    if (message.messageType === 'TraceData' && message.enableCapture &&
+      const tabId = sender.tab.id;
+      const windowId = sender.tab.windowId;
+      let image = '';
+
+      if (
+        message.screenCapture &&
         (
-          message.type === 'pointerdown' ||
-          message.type === 'click' ||
-          message.type === 'submit' ||
-          message.type === 'select' ||
-          message.type === 'drop' ||
-          message.type === 'navigate'||
-          message.shouldCapture
-        )) {
-      const screenshotUrl = await chrome.tabs.captureVisibleTab();
-      _message.image = screenshotUrl;
+          message.custom === 'click' ||
+          message.custom === 'submit' ||
+          message.custom === 'select' ||
+          message.custom === 'drag' ||
+          message.custom === 'drop' ||
+          message.custom === 'navigate'
+        )
+      ) {
+        const screenshotUrl = await chrome.tabs.captureVisibleTab();
+        image = screenshotUrl;
+      }
+
+      const _message = {
+        ...message,
+        messageType: 'TraceData',
+        url: sender.tab.url,
+        tabId: tabId,
+        windowId: windowId,
+        timestamp: Date.now(),
+        image: image,
+      };
+
+      chrome.tabs.sendMessage(sender.tab.id, _message);
     }
-
-    _message.tabId = sender.tab.id;
-    _message.windowId = sender.tab.windowId;
-
-    chrome.tabs.sendMessage(sender.tab.id, _message);
-  });
+  );
 
   // Respond to messages sent by the JavaScript from https://hyp.is.
   // This is how it knows whether the user has this Chrome extension installed.

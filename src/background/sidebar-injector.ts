@@ -452,7 +452,7 @@ export class SidebarInjector {
       }
       await executeScript({
         tabId: tab.id,
-        files: ['/unload-client.js', '/unload-content-script.js'],
+        file: '/unload-client.js',
       });
     }
 
@@ -524,7 +524,7 @@ export class SidebarInjector {
       await executeScript({
         tabId: tab.id,
         frameId: frame.frameId,
-        files: ['/unload-client.js',],
+        file: '/unload-client.js',
       });
     }
 
@@ -550,7 +550,7 @@ export class SidebarInjector {
       return executeScript({
         tabId,
         frameId,
-        files: ['/content-script.js', '/client/build/boot.js'],
+        file: '/client/build/boot.js',
       });
     }
   }

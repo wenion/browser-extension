@@ -24,4 +24,6 @@ export type SidebarToExtensionEvent =
   /**
    * The sidebar informs the extension of recording status.
    */
-  | 'recording';
+  | 'recording'
+
+  | 'customEvent';

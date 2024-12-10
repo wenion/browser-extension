@@ -66,6 +66,14 @@
     "service_worker": "extension.bundle.js"
   },
 
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "all_frames": true
+    }
+  ],
+
   "action": {
     "default_icon": {
       "19": "images/browser-gm-icon-inactive.png",
