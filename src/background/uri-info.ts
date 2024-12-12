@@ -54,18 +54,20 @@ export function uriForBadgeRequest(uri: string) {
  * @throws Will throw a variety of errors: network, json parsing, or wrong format errors.
  */
 export async function fetchAnnotationCount(uri: string): Promise<number> {
-  const response = await fetch(
-    settings.apiUrl + '/badge?uri=' + encodeUriQuery(uri),
-    {
+  const url = settings.apiUrl + '/badge?uri=' + encodeUriQuery(uri);
+  if (url.startsWith('https:')) {
+    const response = await fetch(url, {
       credentials: 'include',
-    },
-  );
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (data && typeof data.total === 'number') {
-    return data.total;
+    if (data && typeof data.total === 'number') {
+      return data.total;
+    }
+
+    throw new Error('Unable to parse badge response');
+  } else {
+    throw new Error('URL is not secure (HTTPS required)');
   }
-
-  throw new Error('Unable to parse badge response');
 }
