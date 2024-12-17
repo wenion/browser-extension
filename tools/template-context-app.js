@@ -13,7 +13,6 @@ function appSettings(settings) {
   let result = {};
   result.apiUrl = settings.apiUrl;
   result.assetRoot = '/client/';
-  result.authDomain = settings.authDomain;
   result.serviceUrl = settings.serviceUrl;
   result.release = settings.version;
   result.appType = settings.appType || '';

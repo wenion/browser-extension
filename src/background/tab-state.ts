@@ -229,39 +229,8 @@ export class TabState {
 
     pendingRequest?.cancel();
 
-    const debouncedFetch = new Promise<number>((resolve, reject) => {
-      const timerId = setTimeout(async () => {
-        let count = this._annotationCountCache.get(url);
-        if (count !== undefined) {
-          resolve(count);
-          return;
-        }
-
-        try {
-          count = await uriInfo.fetchAnnotationCount(url);
-          this._annotationCountCache.set(url, count);
-          setTimeout(
-            () => this._annotationCountCache.delete(url),
-            CACHE_EXPIRATION_MS,
-          );
-        } catch {
-          count = 0;
-        }
-        this._pendingAnnotationCountRequests.delete(tabId);
-        resolve(count);
-      }, wait);
-
-      this._pendingAnnotationCountRequests.set(tabId, {
-        cancel: () => {
-          clearTimeout(timerId);
-          reject(new RequestCanceledError('Badge request canceled'));
-        },
-        waitMs: wait * 2,
-      });
-    });
-
     try {
-      const annotationCount = await debouncedFetch;
+      const annotationCount = 0;
       this.setState(tabId, { annotationCount });
     } catch (error) {
       if (error instanceof RequestCanceledError) {

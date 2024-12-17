@@ -1,6 +1,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'none';">
     <title>GoldMind Help</title>
     <style>
       body {
@@ -72,6 +73,11 @@
         font-family: monospace;
       }
     </style>
+    <script>
+      if (window.top !== window.self) {
+        window.top.location = window.self.location;
+      }
+    </script>
   </head>
   <body>
     <article class="help-container">
