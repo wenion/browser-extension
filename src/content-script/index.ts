@@ -1,5 +1,4 @@
 import { getCustomsContainingNode } from './highlighter';
-import type { Destroyable } from './types/annotator';
 import { ListenerCollection } from './shared/listener-collection';
 import { PortRPC } from './shared/messaging/port-rpc';
 import { isMessage } from './shared/messaging/port-util';
@@ -1083,7 +1082,7 @@ function addEventListeners(doc: Document): void {
         !keyTrace.ctrlKey &&
         !keyTrace.metaKey
       ) {
-        // only Shift pressed
+        // Shift pressed only
         if (keyTrace.key.length > 1) {
           if (keyTrace.key === 'Shift') {
             interrupted = false;
@@ -1123,7 +1122,7 @@ function addEventListeners(doc: Document): void {
         }
 
         if (keyTrace.key.length > 1) {
-          // e.g., Ctrl/Shift/Ctrl + Shift /Ctrl + Alt/Ctrl + Shift + Alt...
+          // e.g., Modifier keys only. Ctrl/Shift/Ctrl + Shift /Ctrl + Alt/Ctrl + Shift + Alt...
           if (keyTrace.key === 'Control' || keyTrace.key === 'Alt' || keyTrace.key === 'Meta' || keyTrace.key === 'Shift') {
             if (modifierKeysNum > 1) {
               interrupted = true;
@@ -1131,22 +1130,40 @@ function addEventListeners(doc: Document): void {
               keyTrace.label = modifierKey.slice(0, -2);
               keyTrace.textContent = keyTrace.label;
             } else {
+              // e.g., One modifier key only. Ctrl/Alt/Meta
               interrupted = false;
               display = false;
               keyTrace.label = modifierKey.slice(0, -2);
               keyTrace.textContent = keyTrace.label;
             }
           } else {
+            // e.g., Ctrl + Home/ Ctrl + PageDown
             interrupted = true;
             display = true;
             keyTrace.label = modifierKey + '`' + keyTrace.key + '`';
             keyTrace.textContent = keyTrace.label;
           }
         } else {
+          //e.g., Ctrl + c / Ctrl + v
           interrupted = true;
           display = true;
           keyTrace.label = modifierKey + keyTrace.key;
           keyTrace.textContent = keyTrace.label;
+          const selection = document.getSelection()?? '';
+          const textContent = selection.toString();
+          if (
+            textContent !== '' &&
+            (keyTrace.ctrlKey || keyTrace.metaKey)
+          ) {
+            const keyPress = keyTrace.key.toLowerCase();
+            if (keyPress === 'c') {
+              keyTrace.custom = 'key copy';
+              keyTrace.label = textContent;
+              keyTrace.textContent = textContent;
+            } else if (keyPress === 'v') {
+              keyTrace.custom = 'key paste';
+            }
+          }
         }
       }
     } else {
@@ -1206,8 +1223,8 @@ function addEventListeners(doc: Document): void {
 
     const trace = {
       ...keyTrace,
-      custom: interrupted ? 'type' : _event.type,
-      display: keyTrace.tagName === 'BODY' ? false : display,
+      custom: interrupted ? (keyTrace.custom === 'undefined' ? 'type' : keyTrace.custom) : _event.type,
+      display: display,
     }
 
     sendToServiceWork(
@@ -1233,6 +1250,96 @@ function addEventListeners(doc: Document): void {
       enableCapture,
     );
   })
+
+  document.addEventListener('cut', (event: ClipboardEvent) => {
+    const selection = document.getSelection()?? '';
+    const text = selection.toString();
+    const target = event.target;
+
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement
+    ) {
+      let trace = {
+        type: event.type,
+        custom: 'cut',
+        tagName: target.tagName,
+        label: text,
+        textContent: text,
+        interactionContext: '',
+        xpath: getXPath(target),
+        eventSource: 'RESOURCE PAGE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+
+      sendToServiceWork(
+        trace,
+        enableCapture
+      );
+
+    }
+  });
+
+  document.addEventListener('copy', (event: ClipboardEvent) => {
+    const selection = document.getSelection()?? '';
+    const text = selection.toString();
+    const target = event.target as Element | null;
+    let trace = {
+      type: event.type,
+      custom: 'copy',
+      tagName: '',
+      label: text,
+      textContent: text,
+      interactionContext: '',
+      xpath: '',
+      eventSource: 'RESOURCE PAGE',
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+
+    if (target) {
+      trace.tagName = target.tagName;
+      trace.xpath = getXPath(target);
+    }
+
+    sendToServiceWork(
+      trace,
+      enableCapture
+    );
+  });
+
+  doc.addEventListener('paste', async (event: ClipboardEvent) => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const target = event.target as Element | null;
+      let trace = {
+        type: event.type,
+        custom: 'paste',
+        tagName: '',
+        label: text,
+        textContent: text,
+        interactionContext: '',
+        xpath: '',
+        eventSource: 'RESOURCE PAGE',
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+
+      if (target) {
+        trace.tagName = target.tagName;
+        trace.xpath = getXPath(target);
+      }
+
+      sendToServiceWork(
+        trace,
+        enableCapture
+      );
+
+    } catch (err) {
+      console.error("Failed to read clipboard content:", err);
+    }
+  });
 }
 
 // Add listeners to the main document
@@ -1262,8 +1369,12 @@ chrome.runtime.onMessage.addListener(async (
 ) => {
   switch (message.messageType) {
     case 'TraceData':
-      if (content)
+      if (content) {
+        if (typeof message.url === 'undefined' || message.url === '') {
+          message.url = window.location.href;
+        }
         content.forwardMessage(message);
+      }
       break;
     case 'CmdData':
       if (message.event === 'chrome.action.onClicked' && message.value) {

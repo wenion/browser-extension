@@ -310,25 +310,6 @@ export class Extension {
           onBrowserActionClicked(tab);
         }
       });
-
-      chrome.tabs.sendMessage(tabId, {
-        messageType: 'TraceData',
-        type: 'getfocus',
-        custom: 'switch to',
-        tagName: 'Switch',
-        label: '',
-        textContent: 'onFocused',
-        interactionContext: '',
-        xpath: '',
-        eventSource: 'TABS',
-        width: tab.width?? 0,
-        height: tab.height?? 0,
-        url: tab.url ?? '',
-        tabId: tabId,
-        windowId: tab.windowId,
-        timestamp: Date.now(),
-        image: '',
-      });
     };
 
     async function onTabReplaced(addedTabId: number, removedTabId: number) {
@@ -512,9 +493,33 @@ export class Extension {
 
       chromeAPI.tabs.onRemoved.addListener(onTabRemoved);
 
+      chrome.tabs.onActivated.addListener(async(activeInfo) => {
+        if (state.isTabActive(activeInfo.tabId)) {
+          const tab = await chrome.tabs.get(activeInfo.tabId);
+          chrome.tabs.sendMessage(activeInfo.tabId, {
+            messageType: 'TraceData',
+            type: 'getfocus',
+            custom: 'switch to',
+            tagName: 'Switch',
+            label: '',
+            textContent: 'onFocused',
+            interactionContext: '',
+            xpath: '',
+            eventSource: 'TABS',
+            width: 0,
+            height: 0,
+            url: tab.url?? '',
+            tabId: activeInfo.tabId,
+            windowId: activeInfo.windowId,
+            timestamp: Date.now(),
+            image: '',
+          });
+        }
+      });
+
       chrome.windows.onFocusChanged.addListener((windowId: number)=> {
         // send get focus
-        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (result)=>{
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (result) => {
           if (result.length > 0 && result[0].id && state.isTabActive(result[0].id)) {
             chrome.tabs.sendMessage(result[0].id, {
               messageType: 'TraceData',
