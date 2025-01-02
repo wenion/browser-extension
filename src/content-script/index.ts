@@ -1157,11 +1157,11 @@ function addEventListeners(doc: Document): void {
           ) {
             const keyPress = keyTrace.key.toLowerCase();
             if (keyPress === 'c') {
-              keyTrace.custom = 'key copy';
+              keyTrace.custom = 'copy';
               keyTrace.label = textContent;
               keyTrace.textContent = textContent;
             } else if (keyPress === 'v') {
-              keyTrace.custom = 'key paste';
+              keyTrace.custom = 'paste';
             }
           }
         }
