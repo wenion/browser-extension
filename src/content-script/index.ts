@@ -53,7 +53,7 @@ function navigate() {
   sendToServiceWork(
     {
       type: '',
-      custom: 'go to',
+      custom: 'Navigate to',
       tagName: 'Navigate',
       label: '',
       textContent: '',
@@ -146,6 +146,10 @@ class ContentService {
 
 function isSpreadsheet() {
   return window.location.href.startsWith('https://docs.google.com/spreadsheets/');
+}
+
+function isGoogleDocDom() {
+  return window.location.href.startsWith('https://docs.google.com/document/');
 }
 
 function isGoogleDoc(trace: any) {
@@ -1345,18 +1349,27 @@ function addEventListeners(doc: Document): void {
 // Add listeners to the main document
 addEventListeners(document);
 
-let content: null | ContentService = null;
+let content = new ContentService();
 const init = async() => {
-  if (!content) {
-    content = new ContentService();
-    content.connect();
-  }
+  content.connect();
+  // Google document
+  // if(isGoogleDocDom()) {
+  //   const iframe = document.querySelector('iframe.docs-texteventtarget-iframe') as HTMLIFrameElement;
+  //   if (iframe) {
+  //     addEventListeners(iframe.contentDocument!)
+  //       // iframe.contentDocument.addEventListener('keydown', function(event) {
+  //       //     console.log('Key pressed in editor:', event.key);
+  //       // });
+  //   } else {
+  //       console.log('Editor iframe not found.');
+  //   }
+  // }
 }
 
 const release = async() => {
   if (content) {
-    content.destroy();
-    content = null;
+    // content.destroy();
+    // content = null;
   }
 }
 
@@ -1369,12 +1382,10 @@ chrome.runtime.onMessage.addListener(async (
 ) => {
   switch (message.messageType) {
     case 'TraceData':
-      if (content) {
-        if (typeof message.url === 'undefined' || message.url === '') {
-          message.url = window.location.href;
-        }
-        content.forwardMessage(message);
+      if (typeof message.url === 'undefined' || message.url === '') {
+        message.url = window.location.href;
       }
+      content.forwardMessage(message);
       break;
     case 'CmdData':
       if (message.event === 'chrome.action.onClicked' && message.value) {
