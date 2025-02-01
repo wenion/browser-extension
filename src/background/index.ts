@@ -64,7 +64,8 @@ export async function init() {
           message.custom === 'select' ||
           message.custom === 'drag' ||
           message.custom === 'drop' ||
-          message.custom === 'navigate'
+          message.custom === 'navigate' ||
+          message.custom === 'contextmenu'
         )
       ) {
         const screenshotUrl = await chrome.tabs.captureVisibleTab();
