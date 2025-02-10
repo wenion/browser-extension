@@ -1148,7 +1148,7 @@ function addEventListeners(doc: Document): void {
             keyTrace.textContent = keyTrace.label;
           }
         } else {
-          //e.g., Ctrl + c / Ctrl + v
+          //e.g., Ctrl + c / Meta + c / Ctrl + v / Meta + v
           interrupted = true;
           display = true;
           keyTrace.label = modifierKey + keyTrace.key;

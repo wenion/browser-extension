@@ -310,6 +310,27 @@ export class Extension {
           onBrowserActionClicked(tab);
         }
       });
+
+      if (status === 'complete') {
+        chrome.tabs.sendMessage(tabId, {
+          messageType: 'TraceData',
+          type: 'getfocus',
+          custom: 'Switch to',
+          tagName: 'Switch',
+          label: '',
+          textContent: 'onFocused',
+          interactionContext: '',
+          xpath: '',
+          eventSource: 'TABS',
+          width: 0,
+          height: 0,
+          url: tab.url?? '',
+          tabId: tabId,
+          windowId: tab.windowId,
+          timestamp: Date.now(),
+          image: '',
+        });
+      }
     };
 
     async function onTabReplaced(addedTabId: number, removedTabId: number) {
@@ -321,12 +342,50 @@ export class Extension {
 
       const tab = await chromeAPI.tabs.get(addedTabId);
       updateAnnotationCountIfEnabled(addedTabId, tab.url!);
+      if (tab.status === 'complete' && tab.id) {
+        chrome.tabs.sendMessage(tab.id, {
+          messageType: 'TraceData',
+          type: 'getfocus',
+          custom: 'Switch to',
+          tagName: 'Switch',
+          label: '',
+          textContent: 'onFocused',
+          interactionContext: '',
+          xpath: '',
+          eventSource: 'TABS',
+          width: 0,
+          height: 0,
+          url: tab.url?? '',
+          tabId: tab.id,
+          windowId: tab.windowId,
+          timestamp: Date.now(),
+          image: '',
+        });
+      }
     }
 
     function onTabCreated(tab: chrome.tabs.Tab) {
       // Clear the state in case there is old, conflicting data in storage.
       if (tab.id) {
         onTabRemoved(tab.id);
+        chrome.tabs.sendMessage(tab.id, {
+          messageType: 'TraceData',
+          type: 'getfocus',
+          custom: 'Switch to',
+          tagName: 'Switch',
+          label: '',
+          textContent: 'onFocused',
+          interactionContext: '',
+          xpath: '',
+          eventSource: 'TABS',
+          width: 0,
+          height: 0,
+          url: tab.url?? '',
+          tabId: tab.id,
+          windowId: tab.windowId,
+          timestamp: Date.now(),
+          image: '',
+        });
       }
     }
 
