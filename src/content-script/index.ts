@@ -226,7 +226,7 @@ function addEventListeners(doc: Document): void {
         {
           type: _event.type,
           custom: 'click',
-          tagName: _target.tagName,
+          tagName: _target.type.toUpperCase(),
           label: label,
           textContent: name,
           interactionContext: JSON.stringify({
@@ -494,12 +494,18 @@ function addEventListeners(doc: Document): void {
       }
 
     } else if (_target instanceof HTMLDivElement) {
-      let label = _target.textContent ? _target.textContent.trim() : 'here';
+      let label = _target.textContent ? _target.textContent.trim() : '';
+      if (label === "") {
+        label = _target.title ? _target.title.trim() : '';
+      }
+      if (label === "") {
+        label = _target.ariaLabel ? _target.ariaLabel.trim() : '';
+      }
+      if (label === "") {
+        label = "as shown in the picture"
+      }
       if (label.length > 150) {
         label = label.slice(0, 150) + '...';
-      }
-      if (label === '') {
-        label = 'here';
       }
       if (_target.innerText.length > 0 || _target.textContent) {
         sendToServiceWork(
@@ -576,7 +582,16 @@ function addEventListeners(doc: Document): void {
         enableCapture
       );
     } else if (_target instanceof HTMLElement) {
-      let label = _target.textContent ? _target.textContent.trim() : 'here';
+      let label = _target.textContent ? _target.textContent.trim() : '';
+      if (label === "") {
+        label = _target.title ? _target.title.trim() : '';
+      }
+      if (label === "") {
+        label = _target.ariaLabel ? _target.ariaLabel.trim() : '';
+      }
+      if (label === "") {
+        label = "as shown in the picture"
+      }
       if (label.length > 150) {
         label = label.slice(0, 150) + '...';
       }
@@ -590,7 +605,7 @@ function addEventListeners(doc: Document): void {
           interactionContext: JSON.stringify({
             name: _target.textContent,
             value: _target.innerText,
-            inner_text: _target.innerText
+            inner_text: _target.innerText,
           }),
           xpath: getXPath(_target),
           eventSource: 'MOUSE',
@@ -714,14 +729,23 @@ function addEventListeners(doc: Document): void {
     let xpath = '';
     if (event.target instanceof HTMLDivElement) {
       tagName = event.target.tagName;
-      name = event.target.getAttribute('aria-label') ?? 'here';
+      name = event.target.getAttribute('aria-label') ?? '';
+      if (name === "") {
+        name = event.target.title ? event.target.title.trim() : '';
+      }
+      if (name === "") {
+        name = event.target.title ? event.target.title.trim() : '';
+      }
+      if (name === "") {
+        name = "as shown in the picture"
+      }
       xpath = getXPath(event.target);
     }
 
     if (isMural() && dragStatus == 'ongoing') {
       if (
-        Math.abs(event.clientX - dragStartEvent.clientX) > 10 ||
-        Math.abs(event.clientY - dragStartEvent.clientY) > 10
+        Math.abs(event.clientX - dragStartEvent.clientX) > 20 ||
+        Math.abs(event.clientY - dragStartEvent.clientY) > 20
       ) {
         sendToServiceWork(
           {
@@ -937,7 +961,7 @@ function addEventListeners(doc: Document): void {
           {
             type: event.type,
             custom: 'type',
-            tagName: 'INPUT',
+            tagName: 'CHECKBOX',
             label: name,
             textContent: name,
             interactionContext: JSON.stringify({
