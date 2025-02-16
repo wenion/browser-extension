@@ -501,24 +501,18 @@ function addEventListeners(doc: Document): void {
       if (label === "") {
         label = _target.ariaLabel ? _target.ariaLabel.trim() : '';
       }
-      if (label === "") {
-        label = "as shown in the picture"
-      }
       if (label.length > 150) {
         label = label.slice(0, 150) + '...';
       }
-      if (_target.innerText.length > 0 || _target.textContent) {
+      if (label.trim().length > 0) {
         sendToServiceWork(
           {
             type: _event.type,
             custom: 'click',
             tagName: _target.tagName,
             label: label,
-            textContent: _target.textContent?? _target.innerText,
-            interactionContext: JSON.stringify({
-              name: _target.textContent,
-              inner_text: _target.innerText
-            }),
+            textContent: label,
+            interactionContext: '',
             xpath: getXPath(_target),
             eventSource: 'MOUSE',
             width: window.innerWidth,
@@ -529,23 +523,35 @@ function addEventListeners(doc: Document): void {
           enableCapture
         );
         return;
-      }
-      else {
+      } else {
         const parent = getParentDiv(_target);
+        let label = "";
+        let source = "origin";
+        if (parent) {
+          label = parent.textContent ? parent.textContent.trim() : '';
+          if (label === "") {
+            label = parent.title ? parent.title.trim() : '';
+          }
+          if (label === "") {
+            label = parent.ariaLabel ? parent.ariaLabel.trim() : '';
+          }
+          if (label.length > 150) {
+            label = label.slice(0, 150) + '...';
+          }
+          source = "parent";
+        }
 
-        if (parent && parent.innerText.length > 0) {
+        if (label.length > 0) {
           sendToServiceWork(
             {
               type: _event.type,
               custom: 'click',
               tagName: _target.tagName,
               label: label,
-              textContent: _target.innerText,
+              textContent: label,
               interactionContext: JSON.stringify({
-                source: 'parent',
-                name: parent.textContent,
-                value: parent.innerText,
-                inner_text: parent.innerText
+                source: source,
+                name: label,
               }),
               xpath: getXPath(_target),
               eventSource: 'MOUSE',
@@ -558,29 +564,30 @@ function addEventListeners(doc: Document): void {
           );
           return;
         }
+        else {
+          label = "as shown in the picture"
+          sendToServiceWork(
+            {
+              type: _event.type,
+              custom: 'click',
+              tagName: _target.tagName,
+              label: label,
+              textContent: label,
+              interactionContext: JSON.stringify({
+                source: source,
+                name: label,
+              }),
+              xpath: getXPath(_target),
+              eventSource: 'MOUSE',
+              width: window.innerWidth,
+              height: window.innerHeight,
+              clientX: _event.clientX,
+              clientY: _event.clientY,
+            },
+            enableCapture
+          );
+        }
       }
-      sendToServiceWork(
-        {
-          type: _event.type,
-          custom: 'click',
-          tagName: _target.tagName,
-          label: label,
-          textContent: label,
-          interactionContext: JSON.stringify({
-            source: 'origin',
-            name: _target.textContent,
-            value: _target.innerText,
-            inner_text: _target.innerText
-          }),
-          xpath: getXPath(_target),
-          eventSource: 'MOUSE',
-          width: window.innerWidth,
-          height: window.innerHeight,
-          clientX: _event.clientX,
-          clientY: _event.clientY,
-        },
-        enableCapture
-      );
     } else if (_target instanceof HTMLElement) {
       let label = _target.textContent ? _target.textContent.trim() : '';
       if (label === "") {
@@ -601,12 +608,8 @@ function addEventListeners(doc: Document): void {
           custom: 'click',
           tagName: _target.tagName,
           label: label,
-          textContent: _target.textContent?? _target.innerText,
-          interactionContext: JSON.stringify({
-            name: _target.textContent,
-            value: _target.innerText,
-            inner_text: _target.innerText,
-          }),
+          textContent: label,
+          interactionContext: "",
           xpath: getXPath(_target),
           eventSource: 'MOUSE',
           width: window.innerWidth,
