@@ -32,6 +32,7 @@ function getSpreadSheetNameBox() {
 
 };
 
+let listenerId : null | symbol = null;
 let enableCapture = false;
 let dragStatus :'start' | 'ongoing' | 'finish' = 'finish';
 let dragStartEvent: ClickTraceMeta = {
@@ -117,8 +118,8 @@ class ContentService {
     });
   }
 
-  async connect() {
-    const listenerId = this._listeners.add(window, 'message', event => {
+  connect() {
+    listenerId = this._listeners.add(window, 'message', event => {
       const { data, ports } = event;
 
       if (
@@ -130,8 +131,12 @@ class ContentService {
       }
 
       this._sidebarRPC.connect(ports[0]);
-      this._listeners.remove(listenerId);
     })
+  }
+
+  disconnect() {
+    if (listenerId)
+      this._listeners.remove(listenerId);
   }
 
   forwardMessage(message: any) {
@@ -1377,7 +1382,9 @@ function addEventListeners(doc: Document): void {
 addEventListeners(document);
 
 let content = new ContentService();
-const init = async() => {
+const init = () => {
+  if (listenerId)
+    return;
   content.connect();
   // Google document
   // if(isGoogleDocDom()) {
@@ -1395,8 +1402,7 @@ const init = async() => {
 
 const release = async() => {
   if (content) {
-    // content.destroy();
-    // content = null;
+    content.disconnect();
   }
 }
 
