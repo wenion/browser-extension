@@ -104,7 +104,7 @@ class ContentService {
           tagName: data.tagName,
           label: data.textContent,
           textContent: data.textContent,
-          interactionContext: '',
+          interactionContext: data.interactionContext,
           xpath: '',
           eventSource: 'CLIENT',
           width: window.innerWidth,
