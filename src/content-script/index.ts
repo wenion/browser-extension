@@ -81,8 +81,22 @@ class ContentService {
 
   constructor() {
     this._sidebarRPC = new PortRPC();
-    this._listeners = new ListenerCollection();
     this._setupExtensionEvent();
+
+    this._listeners = new ListenerCollection();
+    this._listeners.add(window, 'message', event => {
+      const { data, ports } = event;
+
+      if (
+        !isMessage(data) ||
+        data.frame2 !== 'extension' ||
+        data.type === 'request'
+      ) {
+        return;
+      }
+
+      this._sidebarRPC.connect(ports[0]);
+    });
   }
 
   private _setupExtensionEvent() {
@@ -118,25 +132,8 @@ class ContentService {
     });
   }
 
-  connect() {
-    listenerId = this._listeners.add(window, 'message', event => {
-      const { data, ports } = event;
-
-      if (
-        !isMessage(data) ||
-        data.frame2 !== 'extension' ||
-        data.type === 'request'
-      ) {
-        return;
-      }
-
-      this._sidebarRPC.connect(ports[0]);
-    })
-  }
-
   disconnect() {
-    if (listenerId)
-      this._listeners.remove(listenerId);
+    this._sidebarRPC.disconnect();
   }
 
   forwardMessage(message: any) {
@@ -1382,30 +1379,6 @@ function addEventListeners(doc: Document): void {
 addEventListeners(document);
 
 let content = new ContentService();
-const init = () => {
-  if (listenerId)
-    return;
-  content.connect();
-  // Google document
-  // if(isGoogleDocDom()) {
-  //   const iframe = document.querySelector('iframe.docs-texteventtarget-iframe') as HTMLIFrameElement;
-  //   if (iframe) {
-  //     addEventListeners(iframe.contentDocument!)
-  //       // iframe.contentDocument.addEventListener('keydown', function(event) {
-  //       //     console.log('Key pressed in editor:', event.key);
-  //       // });
-  //   } else {
-  //       console.log('Editor iframe not found.');
-  //   }
-  // }
-}
-
-const release = async() => {
-  if (content) {
-    content.disconnect();
-  }
-}
-
 
 // receive from background service
 chrome.runtime.onMessage.addListener(async (
@@ -1421,14 +1394,10 @@ chrome.runtime.onMessage.addListener(async (
       content.forwardMessage(message);
       break;
     case 'CmdData':
-      if (message.event === 'chrome.action.onClicked' && message.value) {
-        init();
-      }
       if (message.event === 'chrome.action.onClicked' && !message.value) {
-        release();
+        console.log("release and disconnect")
+        content.disconnect();
       }
       break;
   }
 })
-
-init();

@@ -175,6 +175,7 @@ export class PortRPC<OnMethod extends string, CallMethod extends string>
 
   private _destroyed: boolean;
   private _listeners: ListenerCollection;
+  private _listenerIds: Map<string, symbol>;
 
   /** Map of method name to handler for RPC calls received by this instance. */
   private _methods: Map<string, Callback>;
@@ -210,6 +211,7 @@ export class PortRPC<OnMethod extends string, CallMethod extends string>
     this._callbacks = new Map();
 
     this._listeners = new ListenerCollection();
+    this._listenerIds = new Map();
 
     // In browsers that emit a "close" event when the other end of a MessagePort
     // goes away, we can listen for that directly. In other browsers, we have to
@@ -271,19 +273,20 @@ export class PortRPC<OnMethod extends string, CallMethod extends string>
    */
   connect(port: MessagePort) {
     this._port = port;
-    this._listeners.add(port, 'message', event => this._handle(event));
-
+    const messageId = this._listeners.add(port, 'message', event => this._handle(event));
+    this._listenerIds.set('message', messageId);
     // For browsers that support a `close` event for MessagePort, we use that
     // to identify when the other end disconnects. This is translated into a
     // message event that is similar to what we receive in older browsers
     // which use a Window unload handler instead.
-    this._listeners.add(port, 'close', () => {
+    const closeId = this._listeners.add(port, 'close', () => {
       port.dispatchEvent(
         new MessageEvent('message', {
           data: makeRequestMessage('close'),
         }),
       );
     });
+    this._listenerIds.set('close', closeId);
 
     port.start();
     sendCall(port, 'connect');
@@ -292,6 +295,21 @@ export class PortRPC<OnMethod extends string, CallMethod extends string>
       this.call(method, ...args);
     }
     this._pendingCalls = [];
+  }
+
+  /**
+   * Disconnect the RPC channel and close the MessagePort.
+   */
+  disconnect() {
+    if (this._port) {
+      sendCall(this._port, 'close');
+      this._port.close();
+      this._port = null;
+    }
+
+    this._listenerIds.forEach((symbol) => {
+      this._listeners.remove(symbol);
+    });
   }
 
   /**
