@@ -1116,7 +1116,7 @@ function addEventListeners(doc: Document): void {
         !keyTrace.metaKey
       ) {
         // Shift pressed only
-        if (keyTrace.key.length > 1) {
+        if (keyTrace.key && keyTrace.key.length > 1) {
           if (keyTrace.key === 'Shift') {
             interrupted = false;
             display = false;
@@ -1154,7 +1154,7 @@ function addEventListeners(doc: Document): void {
           modifierKeysNum += 1;
         }
 
-        if (keyTrace.key.length > 1) {
+        if (keyTrace.key && keyTrace.key.length > 1) {
           // e.g., Modifier keys only. Ctrl/Shift/Ctrl + Shift /Ctrl + Alt/Ctrl + Shift + Alt...
           if (keyTrace.key === 'Control' || keyTrace.key === 'Alt' || keyTrace.key === 'Meta' || keyTrace.key === 'Shift') {
             if (modifierKeysNum > 1) {
@@ -1200,7 +1200,7 @@ function addEventListeners(doc: Document): void {
         }
       }
     } else {
-      if (keyTrace.key.length > 1) {
+      if (keyTrace.key && keyTrace.key.length > 1) {
         if (
           keyTrace.key === 'Backspace' ||
           // keyTrace.key === 'Space' ||
