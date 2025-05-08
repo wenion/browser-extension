@@ -43,5 +43,22 @@ export default [
       commonjs(),
       json(),
     ],
+  },
+  {
+    input: 'src/options/options.ts',
+    output: {
+      file: 'build/options/options.js',
+      format: 'iife',
+    },
+    plugins: [
+      babel({
+        babelHelpers: 'bundled',
+        exclude: 'node_modules/**',
+        extensions: ['.js', '.ts'],
+      }),
+      nodeResolve({ extensions: ['.js', '.ts'] }),
+      commonjs(),
+      json(),
+    ],
   }
 ]
