@@ -22,7 +22,6 @@ function sendToServiceWork(
   message: TraceMeta | ClickTraceMeta | KeyTraceMeta | ScrollTraceMeta | ChangeTraceMetaMeta | CustomMeta,
   screenCapture: boolean
 ) {
-  console.log("message", message)
   chrome.runtime.sendMessage({
     ...message,
     screenCapture: screenCapture,
