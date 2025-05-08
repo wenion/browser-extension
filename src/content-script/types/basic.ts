@@ -42,4 +42,9 @@ export type Trace = TraceMeta & {
   windowId: string,
   timestamp: number,
   image: string,
-} ;
+};
+
+export type CustomMeta = {
+  type: string,
+  custom: string,
+};

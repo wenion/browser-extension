@@ -521,6 +521,31 @@ export class Extension {
                 });
               }
             }
+            if (key === 'model' || 'token' || 'url') {
+              chrome.storage.sync.get(null, (items) => {
+                const model = items.model;
+                const token = items.token;
+                const url = items.url;
+
+                if (model || token || url) {
+                  chrome.tabs.query({ active: true }, (tabs) => {
+                    for (const tab of tabs) {
+                      if (tab.id) {
+                        chrome.tabs.sendMessage(tab.id, {
+                          messageType: 'CmdData',
+                          event: 'chrome.storage.sync.chatUi',
+                          link: chrome.runtime.getURL('options/index.html'),
+                          model: model,
+                          token: token,
+                          url: url,
+                        });
+                      }
+                    }
+                  });
+                }
+              });
+            }
+
           }
         }
       });

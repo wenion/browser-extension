@@ -7,6 +7,7 @@ import type {
   KeyTraceMeta,
   ScrollTraceMeta,
   ChangeTraceMetaMeta,
+  CustomMeta,
 } from '../content-script/types/basic';
 
 /**
@@ -55,6 +56,26 @@ export async function init() {
       const tabId = sender.tab.id;
       const windowId = sender.tab.windowId;
       let image = '';
+
+      if (message.type === 'custom') {
+        if (message.custom === 'chatUi') {
+          chrome.storage.sync.get(["model", "token", "url"]).then((result) => {
+            const model = result.model ?? null;
+            const token = result.token ?? null;
+            const url = result.url ?? null;
+
+            chrome.tabs.sendMessage(tabId, {
+              messageType: 'CmdData',
+              event: 'chrome.storage.sync.chatUi',
+              link: chrome.runtime.getURL('options/index.html'),
+              model: model,
+              token: token,
+              url: url,
+            });
+          });
+          return;
+        }
+      }
 
       if (
         message.screenCapture &&

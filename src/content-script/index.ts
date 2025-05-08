@@ -14,13 +14,15 @@ import type {
   KeyTraceMeta,
   ScrollTraceMeta,
   ChangeTraceMetaMeta,
+  CustomMeta,
 } from './types/basic';
 
 
 function sendToServiceWork(
-  message: TraceMeta | ClickTraceMeta | KeyTraceMeta | ScrollTraceMeta | ChangeTraceMetaMeta,
+  message: TraceMeta | ClickTraceMeta | KeyTraceMeta | ScrollTraceMeta | ChangeTraceMetaMeta | CustomMeta,
   screenCapture: boolean
 ) {
+  console.log("message", message)
   chrome.runtime.sendMessage({
     ...message,
     screenCapture: screenCapture,
@@ -108,6 +110,16 @@ class ContentService {
       enableCapture = data.recording;
     });
     this._sidebarRPC.on('customEvent', (data) => {
+      if (data.custom === 'chatUi' && data.textContent === 'request') {
+        sendToServiceWork(
+          {
+            type: 'custom',
+            custom: data.custom
+          },
+          false
+        );
+        return;
+      }
       if (data.custom === 'record' && data.textContent === 'start') {
         navigate();
       }
@@ -138,6 +150,10 @@ class ContentService {
 
   forwardMessage(message: any) {
     this._sidebarRPC.call("traceData", message);
+  }
+
+  forwardCmdMessage(message: any) {
+    this._sidebarRPC.call("cmdData", message);
   }
 
   destroy() {
@@ -1397,6 +1413,9 @@ chrome.runtime.onMessage.addListener(async (
       if (message.event === 'chrome.action.onClicked' && !message.value) {
         console.log("release and disconnect")
         content.disconnect();
+      }
+      if (message.event === 'chrome.storage.sync.chatUi') {
+        content.forwardCmdMessage(message);
       }
       break;
   }
