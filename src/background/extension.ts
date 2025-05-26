@@ -608,7 +608,7 @@ export class Extension {
             chrome.tabs.sendMessage(result[0].id, {
               messageType: 'TraceData',
               type: 'getfocus',
-              custom: 'switch to',
+              custom: 'Switch to',
               tagName: 'Switch',
               label: '',
               textContent: 'onFocused',
