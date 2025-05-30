@@ -263,12 +263,16 @@ function addEventListeners(doc: Document): void {
         enableCapture
       );
     } else if (_target instanceof HTMLSpanElement) {
+      let label = _target.innerText.trim();
+      if (label === "") {
+        label = "as shown in the picture";
+      }
       sendToServiceWork(
         {
           type: _event.type,
           custom: 'click',
           tagName: _target.tagName,
-          label: _target.innerText,
+          label: label,
           textContent: _target.textContent ?? _target.innerText,
           interactionContext: JSON.stringify({
             name: _target.textContent,
@@ -354,12 +358,16 @@ function addEventListeners(doc: Document): void {
         );
       }
     } else if (_target instanceof HTMLAnchorElement) {
+      let label = _target.innerText.trim();
+      if (label === "") {
+        label = "as shown in the picture";
+      }
       sendToServiceWork(
         {
           type: _event.type,
           custom: 'click',
           tagName: _target.tagName,
-          label: _target.innerText,
+          label: label,
           textContent: _target.innerText,
           interactionContext: JSON.stringify({
             type: _target.type,
@@ -378,12 +386,16 @@ function addEventListeners(doc: Document): void {
         enableCapture
       );
     } else if (_target instanceof HTMLButtonElement) {
+      let label = _target.innerText.trim();
+      if (label === "") {
+        label = "the button";
+      }
       sendToServiceWork(
         {
           type: _event.type,
           custom: 'click',
           tagName: _target.tagName,
-          label: _target.innerText,
+          label: label,
           textContent: _target.textContent ?? _target.innerText,
           interactionContext: JSON.stringify({
             type: _target.type,
@@ -404,12 +416,16 @@ function addEventListeners(doc: Document): void {
       const parent = getParentDiv(_target);
 
       if (parent && parent.innerText.length > 0) {
+        let label = parent.innerText.trim();
+        if (label === "") {
+          label = "the button";
+        }
         sendToServiceWork(
           {
             type: _event.type,
             custom: 'click',
             tagName: 'SVG',
-            label: parent.innerText,
+            label: label,
             textContent: parent.textContent ?? parent.innerText,
             interactionContext: JSON.stringify({
               type: _target.tagName,
@@ -438,12 +454,16 @@ function addEventListeners(doc: Document): void {
         }
 
         if (nextSibling) {
+          let label = nextSibling.innerText.trim();
+          if (label === "") {
+            label = "the icon";
+          }
           sendToServiceWork(
             {
               type: _event.type,
               custom: 'click',
               tagName: 'SVG',
-              label: nextSibling.innerText === '' ? 'icon' : nextSibling.innerText ,
+              label: label,
               textContent: nextSibling.textContent ?? nextSibling.innerText,
               interactionContext: JSON.stringify({
                 type: _target.tagName,
@@ -463,12 +483,17 @@ function addEventListeners(doc: Document): void {
           );
           return;
         } else {
+          let label = parent.textContent ?
+            parent.textContent.trim() : parent.innerText.trim();
+          if (label === "") {
+            label = "the icon";
+          }
           sendToServiceWork(
             {
               type: _event.type,
               custom: 'click',
               tagName: 'SVG',
-              label: parent.textContent?? 'icon',
+              label: label,
               textContent: parent.textContent ?? parent.innerText,
               interactionContext: JSON.stringify({
                 type: _target.tagName,
@@ -493,7 +518,7 @@ function addEventListeners(doc: Document): void {
             type: _event.type,
             custom: 'click',
             tagName: 'SVG',
-            label: 'icon',
+            label: 'the icon',
             textContent: '',
             interactionContext: JSON.stringify({
               type: _target.tagName,
@@ -513,15 +538,16 @@ function addEventListeners(doc: Document): void {
     } else if (_target instanceof HTMLDivElement) {
       let label = _target.textContent ? _target.textContent.trim() : '';
       if (label === "") {
-        label = _target.title ? _target.title.trim() : '';
+        label = _target.title.trim();
       }
       if (label === "") {
         label = _target.ariaLabel ? _target.ariaLabel.trim() : '';
       }
+      label = label.trim();
       if (label.length > 150) {
         label = label.slice(0, 150) + '...';
       }
-      if (label.trim().length > 0) {
+      if (label.length > 0) {
         sendToServiceWork(
           {
             type: _event.type,
@@ -542,16 +568,16 @@ function addEventListeners(doc: Document): void {
         return;
       } else {
         const parent = getParentDiv(_target);
-        let label = "";
         let source = "origin";
         if (parent) {
           label = parent.textContent ? parent.textContent.trim() : '';
           if (label === "") {
-            label = parent.title ? parent.title.trim() : '';
+            label = parent.title.trim();
           }
           if (label === "") {
             label = parent.ariaLabel ? parent.ariaLabel.trim() : '';
           }
+          label = label.trim();
           if (label.length > 150) {
             label = label.slice(0, 150) + '...';
           }
@@ -608,11 +634,12 @@ function addEventListeners(doc: Document): void {
     } else if (_target instanceof HTMLElement) {
       let label = _target.textContent ? _target.textContent.trim() : '';
       if (label === "") {
-        label = _target.title ? _target.title.trim() : '';
+        label = _target.title.trim();
       }
       if (label === "") {
         label = _target.ariaLabel ? _target.ariaLabel.trim() : '';
       }
+      label = label.trim();
       if (label === "") {
         label = "as shown in the picture"
       }
