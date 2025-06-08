@@ -1004,39 +1004,68 @@ function addEventListeners(doc: Document): void {
         name = _target.labels[0].innerText;
       }
       if (_target.type == 'checkbox') {
-        sendToServiceWork(
-          {
-            type: event.type,
-            custom: 'type',
-            tagName: 'CHECKBOX',
-            label: name,
-            textContent: name,
-            interactionContext: JSON.stringify({
-              type: _target.type,
-              name: name,
-              value: _target.checked
-            }),
-            xpath: getXPath(_target),
-            eventSource: 'MOUSE',
-            width: window.innerWidth,
-            height: window.innerHeight,
-            display: true,
-          },
-          enableCapture
-        );
+        setTimeout(() =>
+          sendToServiceWork(
+            {
+              type: event.type,
+              custom: 'type',
+              tagName: 'CHECKBOX',
+              label: name,
+              textContent: name,
+              interactionContext: JSON.stringify({
+                type: _target.type,
+                name: name,
+                value: _target.checked
+              }),
+              xpath: getXPath(_target),
+              eventSource: 'MOUSE',
+              width: window.innerWidth,
+              height: window.innerHeight,
+              display: true,
+            },
+            enableCapture
+          ),
+          100
+        )
       }
       else {
+        setTimeout(() =>
+          sendToServiceWork(
+            {
+              type: event.type,
+              custom: 'type',
+              tagName: 'INPUT',
+              label: _target.value,
+              textContent: _target.value,
+              interactionContext: JSON.stringify({
+                type: _target.type,
+                name: name,
+                value: _target.value
+              }),
+              xpath: getXPath(_target),
+              eventSource: 'MOUSE',
+              width: window.innerWidth,
+              height: window.innerHeight,
+              display: true,
+            },
+            enableCapture
+          ),
+          100
+        )
+      }
+    } else if (_target instanceof HTMLSelectElement) {
+      setTimeout(() =>
         sendToServiceWork(
           {
             type: event.type,
             custom: 'type',
-            tagName: 'INPUT',
-            label: _target.value,
+            tagName: 'SELECT',
+            label: _target.options[_target.selectedIndex].innerText,
             textContent: _target.value,
             interactionContext: JSON.stringify({
               type: _target.type,
-              name: name,
-              value: _target.value
+              name: _target.labels[0].innerText,
+              value: _target.options[_target.selectedIndex].innerText
             }),
             xpath: getXPath(_target),
             eventSource: 'MOUSE',
@@ -1045,55 +1074,38 @@ function addEventListeners(doc: Document): void {
             display: true,
           },
           enableCapture
-        );
-      }
-    } else if (_target instanceof HTMLSelectElement) {
-      sendToServiceWork(
-        {
-          type: event.type,
-          custom: 'type',
-          tagName: 'SELECT',
-          label: _target.options[_target.selectedIndex].innerText,
-          textContent: _target.value,
-          interactionContext: JSON.stringify({
-            type: _target.type,
-            name: _target.labels[0].innerText,
-            value: _target.options[_target.selectedIndex].innerText
-          }),
-          xpath: getXPath(_target),
-          eventSource: 'MOUSE',
-          width: window.innerWidth,
-          height: window.innerHeight,
-          display: true,
-        },
-        enableCapture
-      );
+        ),
+        100
+      )
     } else if (_target instanceof HTMLTextAreaElement) {
       let name = 'Textarea';
       let value = _target.value;
       if (_target.labels && _target.labels[0]) {
         name = _target.labels[0].innerText;
       }
-      sendToServiceWork(
-        {
-          type: event.type,
-          custom: 'type',
-          tagName: 'TEXTAREA',
-          label: value,
-          textContent: value,
-          interactionContext: JSON.stringify({
-            type: _target.type,
-            name: name,
-            value: value
-          }),
-          xpath: getXPath(_target),
-          eventSource: 'MOUSE',
-          width: window.innerWidth,
-          height: window.innerHeight,
-          display: true,
-        },
-        enableCapture
-      );
+      setTimeout(() =>
+        sendToServiceWork(
+          {
+            type: event.type,
+            custom: 'type',
+            tagName: 'TEXTAREA',
+            label: value,
+            textContent: value,
+            interactionContext: JSON.stringify({
+              type: _target.type,
+              name: name,
+              value: value
+            }),
+            xpath: getXPath(_target),
+            eventSource: 'MOUSE',
+            width: window.innerWidth,
+            height: window.innerHeight,
+            display: true,
+          },
+          enableCapture
+        ),
+        100
+      )
     }
   });
 

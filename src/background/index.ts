@@ -81,6 +81,7 @@ export async function init() {
         message.screenCapture &&
         (
           message.custom === 'click' ||
+          message.custom === 'type' ||
           message.custom === 'submit' ||
           message.custom === 'select' ||
           message.custom === 'drag' ||
